@@ -46,10 +46,6 @@ namespace Haley.Models {
             Cuid = OSSUtils.GenerateCuid(DisplayName);
         }
 
-        protected void GenerateCuid(params string[] inputs) {
-            Cuid = OSSUtils.GenerateCuid(inputs);
-        }
-
         public string Guid { get; private set; } //Sha256 generated from the name and a guid is created from there.
         [IgnoreMapping]
         public string Cuid { get; protected set; } //Collision resistant Unique identifier

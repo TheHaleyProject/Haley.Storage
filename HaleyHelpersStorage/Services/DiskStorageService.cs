@@ -29,9 +29,7 @@ namespace Haley.Services {
         async Task Initialize(bool force = false) {
             if (_isInitialized && !force) return;
             var defObj = new OSSControlled(OSSInfo.DEFAULTNAME);
-            await RegisterClient(defObj); //Registers defaul client
-            await RegisterModule(defObj, defObj); //Registers default module
-            await RegisterWorkSpace(defObj, defObj, defObj); //Registers default module
+            await RegisterClient(defObj); //Registers defaul client, with default module and default workspace
             _isInitialized = true;
         }
         public string BasePath { get; }
@@ -44,6 +42,7 @@ namespace Haley.Services {
         }
         public IDiskStorageService SetIndexer(IDSSIndexing service) {
             Indexer = service;
+            Initialize(true).Wait();
             return this;
         }
     }

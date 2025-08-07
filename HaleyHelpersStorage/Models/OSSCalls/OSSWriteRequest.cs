@@ -17,19 +17,25 @@ namespace Haley.Models {
         public string Id { get; set; }
         public Stream FileStream { get; set; }
 
-        public new OSSWriteRequest SetClient(OSSControlled input) {
-             base.SetClient(input);
+        public new OSSWriteRequest SetComponent(OSSControlled input, OSSComponent type) {
+             base.SetComponent(input,type);
             return this;
         }
+        public OSSWriteRequest() : this(null, null, null) {
 
-        public new OSSWriteRequest SetModule(OSSControlled input) {
-            base.SetModule(input);
-            return this;
         }
-        public OSSWriteRequest() { }
+        public OSSWriteRequest(string client_name) : this(client_name, null,null) {
+
+        }
+        public OSSWriteRequest(string client_name, string module_name) : this(client_name, module_name, null) {
+
+        }
+        public OSSWriteRequest(string client_name, string module_name,string workspace_name, bool isWsVirtual = false):base(client_name,module_name,workspace_name) {
+        
+        }
 
         public virtual object Clone() {
-            var cloned = new OSSWriteRequest();
+            var cloned = new OSSWriteRequest(this.Client.Name);
             //use map
             this.MapProperties(cloned);
             return cloned ;

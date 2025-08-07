@@ -21,7 +21,7 @@ namespace Haley.Services {
                 case OSSComponent.WorkSpace:
                 var suffixAddon = input.ControlMode == OSSControlMode.None ? "u" : "m";
                 suffix = suffixAddon + Config.SuffixWorkSpace;
-                length = 1; depth = 4;
+                length = 2; depth = 2;
                 break;
                 case OSSComponent.File:
                 suffix = Config.SuffixFile;
@@ -38,15 +38,15 @@ namespace Haley.Services {
             OSSComponent targetType = OSSComponent.Client;
             string metaFilePath = string.Empty;
 
-            if (typeof(T).IsAssignableFrom(typeof(IOSSClient))) {
+            if (typeof(IOSSClient).IsAssignableFrom(typeof(T))) {
                 targetType = OSSComponent.Client;
                 metaFilePath = CLIENTMETAFILE;
                 target = input.Client;
-            } else if (typeof(T).IsAssignableFrom(typeof(IOSSModule))) {
+            } else if (typeof(IOSSModule).IsAssignableFrom(typeof(T))) {
                 targetType = OSSComponent.Module;
                 metaFilePath = MODULEMETAFILE;
                 target = input.Module;
-            } else if (typeof(T).IsAssignableFrom(typeof(IOSSWorkspace))) {
+            } else if (typeof(IOSSWorkspace).IsAssignableFrom(typeof(T))) {
                 targetType = OSSComponent.WorkSpace;
                 metaFilePath = WORKSPACEMETAFILE;
                 target = input.Workspace;
@@ -125,7 +125,7 @@ namespace Haley.Services {
                 if (Indexer.TryGetComponentInfo<OSSWorkspace>(OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace), out OSSWorkspace wInfo)) {
                     //TODO: USE THE INDEXER TO GET THE PATH FOR THIS SPECIFIC FILE WITH MODULE AND CLIENT NAME.
                     //TODO: IF THE PATH IS OBTAINED, THEN JUST JOIN THE PATHS.
-                    targetFilePath = OSSUtils.GenerateFileSystemSavePath(new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse), splitProvider: SplitProvider, suffix: Config.SuffixFile, throwExceptions: true).path;
+                    targetFilePath = OSSUtils.GenerateFileSystemSavePath(new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse,isVirtual:false), splitProvider: SplitProvider, suffix: Config.SuffixFile, throwExceptions: true).path;
                 } else {
                     targetFilePath = targetFileName.ToDBName(); //Just lower it 
                 }

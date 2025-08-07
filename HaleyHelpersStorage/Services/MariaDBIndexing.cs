@@ -160,9 +160,9 @@ namespace Haley.Utils {
             }   
 
             if (_idxAllDirectories.ContainsKey(info.Cuid)) {
-                _idxAllDirectories.TryUpdate(info.Name, info, null); //Gives the schema name
+                _idxAllDirectories.TryUpdate(info.Cuid, info, null); //Gives the schema name
             } else {
-                _idxAllDirectories.TryAdd(info.Name, info);
+                _idxAllDirectories.TryAdd(info.Cuid, info);
             }
         }
 

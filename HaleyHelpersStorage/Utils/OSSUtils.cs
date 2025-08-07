@@ -37,6 +37,10 @@ namespace Haley.Utils
             string result = string.Empty;
             long objId = 0;
             Guid objGuid = Guid.Empty;
+
+            //If We are dealing with virutal item. No need to think a lot, as there is no path.
+            if (nObj.IsVirtual) return (nObj.Name, "");
+
             switch (nObj.ControlMode) {
                 case OSSControlMode.None:
                     nObj.SaveAsName = nObj.Name;

@@ -23,7 +23,7 @@ namespace Haley.Models {
         }
         public OSSModule(string clientName, string displayName) : base(displayName) {
             Client = new OSSInfo(clientName) {};
-            GenerateCuid(Client.Name, Name); //With all other names
+            UpdateCUID(Client.Name, Name); //With all other names
         }
     }
 }

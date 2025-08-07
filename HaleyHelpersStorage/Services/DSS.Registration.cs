@@ -2,22 +2,27 @@
 using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
+using System.Diagnostics;
 
 namespace Haley.Services {
     public partial class DiskStorageService : IDiskStorageService {
-        public Task<IFeedback> RegisterClient(string name, string password = null) {
-            return RegisterClient(new OSSControlled(name));
+        public Task<IFeedback> RegisterClient(string client_name, string password = null) {
+            return RegisterClient(new OSSControlled(client_name));
         }
-        public Task<IFeedback> RegisterModule(string name, string client_name = null) {
-            return RegisterModule(new OSSControlled(name), new OSSControlled(client_name));
+        public Task<IFeedback> RegisterModule(string module_name=null, string client_name = null) {
+            return RegisterModule(new OSSControlled(module_name), new OSSControlled(client_name));
         }
-        public async Task<IFeedback> RegisterClient(IOSSControlled input, string password = null) {
+        public Task<IFeedback> RegisterWorkSpace(string workspace_name=null, string client_name = null, string module_name = null, OSSControlMode content_control = OSSControlMode.Both, OSSParseMode content_pmode = OSSParseMode.ParseOrGenerate, bool is_virtual = false) {
+            return RegisterWorkSpace(new OSSControlled(workspace_name, OSSControlMode.Guid, OSSParseMode.ParseOrGenerate, isVirtual:is_virtual), new OSSControlled(client_name), new OSSControlled(module_name), content_control, content_pmode);
+        }
+
+        public async Task<IFeedback> RegisterClient(IOSSControlled client, string password = null) {
             //Password will be stored in the .dss.meta file
-            if (input == null) return new Feedback(false, "Name cannot be empty");
-            if (!input.TryValidate(out var msg)) return new Feedback(false, msg);
-            if (input.ControlMode != OSSControlMode.None) input.ControlMode = OSSControlMode.Guid; //Either we allow as is, or we go with GUID. no numbers allowed.
+            if (client == null) return new Feedback(false, "Name cannot be empty");
+            if (!client.TryValidate(out var msg)) return new Feedback(false, msg);
+            if (client.ControlMode != OSSControlMode.None) client.ControlMode = OSSControlMode.Guid; //Either we allow as is, or we go with GUID. no numbers allowed.
             if (string.IsNullOrWhiteSpace(password)) password = DEFAULTPWD;
-            var cInput = GenerateBasePath(input, OSSComponent.Client); //For client, we only prefer hash mode.
+            var cInput = GenerateBasePath(client, OSSComponent.Client); //For client, we only prefer hash mode.
             var path = Path.Combine(BasePath, cInput.path);
 
             //Thins is we are not allowing any path to be provided by user. Only the name is allowed.
@@ -30,9 +35,9 @@ namespace Haley.Services {
             var signing = RandomUtils.GetString(512);
             var encrypt = RandomUtils.GetString(512);
             var pwdHash = HashUtils.ComputeHash(password, HashMethod.Sha256);
-            var result = new Feedback(true, $@"Client {input.DisplayName} is registered");
+            var result = new Feedback(true, $@"Client {client.DisplayName} is registered");
 
-            var clientInfo = input.MapProperties(new OSSClient(pwdHash, signing, encrypt,input.DisplayName) { Path = cInput.path });
+            var clientInfo = client.MapProperties(new OSSClient(pwdHash, signing, encrypt,client.DisplayName) { Path = cInput.path });
             if (WriteMode) {
                 var metaFile = Path.Combine(path, CLIENTMETAFILE);
                 File.WriteAllText(metaFile, clientInfo.ToJson());   // Over-Write the keys here.
@@ -43,12 +48,15 @@ namespace Haley.Services {
             if (!result.Status || Indexer == null) return result;
             var idxResult = await Indexer.RegisterClient(clientInfo);
             result.Result = idxResult.Result;
+
+            //Whenever  we register a client, we immediately register default module and default workspace.
+            await RegisterModule(new OSSControlled(null), client);
             return result;
         }
-        public async Task<IFeedback> RegisterModule(IOSSControlled input, IOSSControlled client) {
+        public async Task<IFeedback> RegisterModule(IOSSControlled module, IOSSControlled client) {
             //AssertValues(true, (client_name,"client name"), (name,"module name")); //uses reflection and might carry performance penalty
             string msg = string.Empty;
-            if (!input.TryValidate(out msg)) new Feedback(false, msg);
+            if (!module.TryValidate(out msg)) new Feedback(false, msg);
             if (!client.TryValidate(out msg)) new Feedback(false, msg);
 
             var client_path = GenerateBasePath(client, OSSComponent.Client).path; //For client, we only prefer hash mode.
@@ -57,7 +65,7 @@ namespace Haley.Services {
             if (client_path.Contains("..")) return new Feedback(false, "Client Path contains invalid characters");
 
             //MODULE INFORMATION BASIC VALIDATION
-            var modPath = GenerateBasePath(input, OSSComponent.Module).path; //For client, we only prefer hash mode.
+            var modPath = GenerateBasePath(module, OSSComponent.Module).path; //For client, we only prefer hash mode.
             bPath = Path.Combine(bPath, modPath); //Including Client Path
 
             //Create these folders and then register them.
@@ -65,53 +73,53 @@ namespace Haley.Services {
                 Directory.CreateDirectory(bPath); //Create the directory.
             }
 
-            var moduleInfo = input.MapProperties(new OSSModule(client.Name,input.DisplayName) { Path = modPath });
+            var moduleInfo = module.MapProperties(new OSSModule(client.Name,module.DisplayName) { Path = modPath });
             if (WriteMode) {
                 var metaFile = Path.Combine(bPath, MODULEMETAFILE);
                 File.WriteAllText(metaFile, moduleInfo.ToJson());
             }
 
-            var result = new Feedback(true, $@"Module {input.DisplayName} is registered");
+            var result = new Feedback(true, $@"Module {module.DisplayName} is registered");
             if (!Directory.Exists(bPath)) result.SetStatus(false).SetMessage("Directory is not created. Please ensure if the WriteMode is turned ON or proper access is availalbe.");
 
             if (Indexer == null) return result;
             var idxResult = await Indexer.RegisterModule(moduleInfo);
             result.Result = idxResult.Result;
+
+            await RegisterWorkSpace(new OSSControlled(null, OSSControlMode.Guid, OSSParseMode.ParseOrGenerate), client, module);
             return result;
         }
-        public Task<IFeedback> RegisterWorkSpace(string name, string client_name = null, string module_name = null, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
-            return RegisterWorkSpace(new OSSControlled(name, OSSControlMode.Guid, OSSParseMode.ParseOrGenerate), new OSSControlled(client_name), new OSSControlled(module_name), content_control, content_pmode);
-        }
-
-        public async Task<IFeedback> RegisterWorkSpace(IOSSControlled input, IOSSControlled client, IOSSControlled module, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
+        public async Task<IFeedback> RegisterWorkSpace(IOSSControlled wspace, IOSSControlled client, IOSSControlled module, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
             string msg = string.Empty;
-            if (!input.TryValidate(out msg)) throw new Exception(msg);
+            if (!wspace.TryValidate(out msg)) throw new Exception(msg);
             if (!client.TryValidate(out msg)) throw new Exception(msg);
             if (!module.TryValidate(out msg)) throw new Exception(msg);
 
             var cliPath = GenerateBasePath(client, OSSComponent.Client).path;
             var modPath = GenerateBasePath(module, OSSComponent.Module).path;
 
-            var bpath = Path.Combine(BasePath, cliPath, modPath);
-            if (!Directory.Exists(bpath)) return new Feedback(false, $@"Unable to lcoate the basepath for the Client : {client.DisplayName}, Module : {module.DisplayName}");
-            if (bpath.Contains("..")) return new Feedback(false, "Invalid characters found in the base path.");
+            var path = Path.Combine(BasePath, cliPath, modPath);
+            if (!Directory.Exists(path)) return new Feedback(false, $@"Unable to lcoate the basepath for the Client : {client.DisplayName}, Module : {module.DisplayName}");
+            if (path.Contains("..")) return new Feedback(false, "Invalid characters found in the base path.");
+            string wsPath = string.Empty;
+            if (!wspace.IsVirtual) {
+                //MODULE INFORMATION BASIC VALIDATION
+                wsPath = GenerateBasePath(wspace, OSSComponent.WorkSpace).path; //For client, we only prefer hash mode.
+                path = Path.Combine(path, wsPath); //Including Base Paths
 
-            //MODULE INFORMATION BASIC VALIDATION
-            var wsPath = GenerateBasePath(input, OSSComponent.WorkSpace).path; //For client, we only prefer hash mode.
-            var path = Path.Combine(bpath, wsPath); //Including Base Paths
-
-            //Create these folders and then register them.
-            if (!Directory.Exists(path) && WriteMode) {
-                Directory.CreateDirectory(path); //Create the directory.
+                //Create these folders and then register them.
+                if (!Directory.Exists(path) && WriteMode) {
+                    Directory.CreateDirectory(path); //Create the directory.
+                }
             }
 
-            var wsInfo = input.MapProperties(new OSSWorkspace(client.Name, module.Name, input.DisplayName) { Path = wsPath });
+            var wsInfo = wspace.MapProperties(new OSSWorkspace(client.Name, module.Name, wspace.DisplayName) { Path = wsPath ,ContentControl = content_control, ContentParse = content_pmode });
             if (WriteMode) {
                 var metaFile = Path.Combine(path, WORKSPACEMETAFILE);
                 File.WriteAllText(metaFile, wsInfo.ToJson());
             }
 
-            var result = new Feedback(true, $@"Workspace {input.DisplayName} is registered");
+            var result = new Feedback(true, $@"Workspace {wspace.DisplayName} is registered");
             if (!Directory.Exists(path)) result.SetStatus(false).SetMessage("Directory is not created. Please ensure if the WriteMode is turned ON or proper access is availalbe.");
 
             if (Indexer == null) return result;
@@ -119,7 +127,6 @@ namespace Haley.Services {
             result.Result = idxResult.Result;
             return result;
         }
-
         public Task<IFeedback> AuthorizeClient(object clientInfo, object clientSecret) {
             //Take may be we take the password? no?
             //We can take the password for this client, and compare with the information available in the DB or in the folder. 

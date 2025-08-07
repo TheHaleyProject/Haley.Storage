@@ -139,27 +139,28 @@ class Testing {
             var dss = new DiskStorageService(_agw,"mss_db");
             await dss.RegisterClient(new OSSControlled("bcde"));
             await dss.RegisterClient(new OSSControlled("olacabs",OSSControlMode.Guid));
+            await dss.RegisterClient("daep");
             await dss.RegisterModule("lingam","bcde");
+            await dss.RegisterModule("bcde","daep");
+            await dss.RegisterWorkSpace("common", "daep","bcde",is_virtual:true);
             await dss.RegisterModule(new OSSControlled("test",OSSControlMode.Guid),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("test12"),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("contest", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterModule(new OSSControlled("test", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterWorkSpace(null,"bcde","lingam");
 
-            //for (int i = 0; i < 4; i++) {
-            //    var status = await dss.Upload(new OSSWriteRequest() {
-            //        FileStream = new FileStream(@"C:\Users\tmp168\Downloads\PNCL Data Compliance - Frame 1(4).jpg", FileMode.Open, FileAccess.Read),
-            //        ResolveMode = OSSResolveMode.Revise,
-            //        TargetName = @"C:\Users\tmp168\Downloads\response_1751620873480.jpg",
-            //        Client = new OSSName("bcde"),
-            //        Module = new OSSName("contest", OSSControlMode.Guid)
-            //    });
-            //    Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
-            //}
+            for (int i = 0; i < 4; i++) {
+                var status = await dss.Upload(new OSSWriteRequest("daep","bcde") {
+                    FileStream = new FileStream(@"C:\Users\tmp168\Downloads\PNCL Data Compliance - Frame 1(4).jpg", FileMode.Open, FileAccess.Read),
+                    ResolveMode = OSSResolveMode.Revise,
+                    TargetName = @"C:\Users\tmp168\Downloads\response_1751620873480.jpg",
+                }.SetComponent(new OSSControlled("common",isVirtual:true),OSSComponent.WorkSpace));
+                Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
+            }
 
             //var dld = await dss.Download(new OSSReadRequest() {
-            //    Client = new OSSName("bcde"),
-            //    Module = new OSSName("contest",OSSControlMode.Guid),
+            //    Client = new OSSControlled("bcde"),
+            //    Module = new OSSControlled("contest", OSSControlMode.Guid),
             //    TargetName = "response_1751620873480.jpg"
             //});
             Console.ReadKey();
