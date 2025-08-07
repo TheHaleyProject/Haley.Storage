@@ -95,11 +95,11 @@ namespace Haley.Utils
             if (splitProvider == null) splitProvider = defaultSplitProvider;
             bool isNumber = input.IsNumber();
             var sinfo = splitProvider(isNumber);
-            if (sinfo.depth < 0) sinfo.depth = 0;
-            if (sinfo.depth > 12) sinfo.depth = 12;
+            //if (sinfo.depth < 0) sinfo.depth = 0;
+            //if (sinfo.depth > 12) sinfo.depth = 12;
 
-            if (sinfo.length < 1) sinfo.length = 1;
-            if (sinfo.length > 8) sinfo.length = 8;
+            //if (sinfo.length < 0) sinfo.length = 0; //Which means there is not split.
+            //if (sinfo.length > 8) sinfo.length = 8;
 
             return input.Separate(sinfo.length, sinfo.depth, addPadding: isNumber ? true : false, resultAsPath: true);
         }

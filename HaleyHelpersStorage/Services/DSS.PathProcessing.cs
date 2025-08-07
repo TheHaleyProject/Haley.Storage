@@ -10,13 +10,13 @@ namespace Haley.Services {
             int length = 2;
             int depth = 0;
             switch (basePath) {
-                case OSSComponent.Client:
+                case OSSComponent.Client: //We might have very limited number of clients.
                 suffix = Config.SuffixClient;
-                length = 4; depth = 2;
+                length = 0; depth = 0;
                 break;
                 case OSSComponent.Module:
                 suffix = Config.SuffixModule;
-                length = 5; depth = 2;
+                length = 0; depth = 0;
                 break;
                 case OSSComponent.WorkSpace:
                 var suffixAddon = input.ControlMode == OSSControlMode.None ? "u" : "m";

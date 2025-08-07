@@ -32,7 +32,7 @@ namespace Haley.Services {
             var pwdHash = HashUtils.ComputeHash(password, HashMethod.Sha256);
             var result = new Feedback(true, $@"Client {input.DisplayName} is registered");
 
-            var clientInfo = input.MapProperties(new OSSClient(pwdHash, signing, encrypt) { Path = cInput.path });
+            var clientInfo = input.MapProperties(new OSSClient(pwdHash, signing, encrypt,input.DisplayName) { Path = cInput.path });
             if (WriteMode) {
                 var metaFile = Path.Combine(path, CLIENTMETAFILE);
                 File.WriteAllText(metaFile, clientInfo.ToJson());   // Over-Write the keys here.
@@ -65,7 +65,7 @@ namespace Haley.Services {
                 Directory.CreateDirectory(bPath); //Create the directory.
             }
 
-            var moduleInfo = input.MapProperties(new OSSModule(client.Name) { Path = modPath });
+            var moduleInfo = input.MapProperties(new OSSModule(client.Name,input.DisplayName) { Path = modPath });
             if (WriteMode) {
                 var metaFile = Path.Combine(bPath, MODULEMETAFILE);
                 File.WriteAllText(metaFile, moduleInfo.ToJson());
@@ -79,12 +79,10 @@ namespace Haley.Services {
             result.Result = idxResult.Result;
             return result;
         }
-        public Task<IFeedback> RegisterWorkSpace(string name, string client_name = null, string module_name = null) {
-            return RegisterWorkSpace(name, client_name, module_name);
-        }
-        public Task<IFeedback> RegisterWorkSpace(string name, string client_name, string module_name, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
+        public Task<IFeedback> RegisterWorkSpace(string name, string client_name = null, string module_name = null, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
             return RegisterWorkSpace(new OSSControlled(name, OSSControlMode.Guid, OSSParseMode.ParseOrGenerate), new OSSControlled(client_name), new OSSControlled(module_name), content_control, content_pmode);
         }
+
         public async Task<IFeedback> RegisterWorkSpace(IOSSControlled input, IOSSControlled client, IOSSControlled module, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
             string msg = string.Empty;
             if (!input.TryValidate(out msg)) throw new Exception(msg);

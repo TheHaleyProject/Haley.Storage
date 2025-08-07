@@ -143,7 +143,8 @@ class Testing {
             await dss.RegisterModule(new OSSControlled("test",OSSControlMode.Guid),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("test12"),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("contest", OSSControlMode.Guid),new OSSControlled("bcde"));
-
+            await dss.RegisterModule(new OSSControlled("test", OSSControlMode.Guid),new OSSControlled("bcde"));
+            await dss.RegisterWorkSpace(null,"bcde","lingam");
 
             //for (int i = 0; i < 4; i++) {
             //    var status = await dss.Upload(new OSSWriteRequest() {

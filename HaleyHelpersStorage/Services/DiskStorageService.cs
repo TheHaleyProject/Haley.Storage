@@ -28,8 +28,10 @@ namespace Haley.Services {
         }
         async Task Initialize(bool force = false) {
             if (_isInitialized && !force) return;
-            await RegisterClient(new OSSControlled()); //Registers defaul client
-            await RegisterModule(new OSSControlled(), new OSSControlled()); //Registers default module
+            var defObj = new OSSControlled(OSSInfo.DEFAULTNAME);
+            await RegisterClient(defObj); //Registers defaul client
+            await RegisterModule(defObj, defObj); //Registers default module
+            await RegisterWorkSpace(defObj, defObj, defObj); //Registers default module
             _isInitialized = true;
         }
         public string BasePath { get; }

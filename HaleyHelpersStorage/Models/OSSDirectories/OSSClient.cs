@@ -26,7 +26,7 @@ namespace Haley.Models {
 
             return true;
         }
-        public OSSClient(string password, string signingkey,string encryptkey, string displayName = DEFAULTNAME) :base(displayName){ 
+        public OSSClient(string password, string signingkey,string encryptkey, string displayName) :base(displayName){ 
             PasswordHash = password;
             SigningKey = signingkey;
             EncryptKey = encryptkey;

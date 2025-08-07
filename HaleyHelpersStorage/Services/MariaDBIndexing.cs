@@ -24,7 +24,7 @@ namespace Haley.Utils {
         const string DB_CORE_SEARCH_TERM = "dss_core";
         const string DB_CLIENT_SEARCH_TERM = "dss_client";
         const string DB_SQL_FILE_LOCATION = "Resources";
-        const string DB_CLIENT_NAME_PREFIX = "dss_";
+        const string DB_MODULE_NAME_PREFIX = "dssm_";
         string _key;
         IAdapterGateway _agw;
         bool isValidated = false;
@@ -168,7 +168,7 @@ namespace Haley.Utils {
 
         async Task CreateModuleDBInstance(IOSSDirectory dirInfo) {
             if (!(dirInfo is IOSSModule info)) return;
-            if (string.IsNullOrWhiteSpace(info.DatabaseName)) info.DatabaseName = $@"{DB_CLIENT_NAME_PREFIX}{info.Cuid}";
+            if (string.IsNullOrWhiteSpace(info.DatabaseName)) info.DatabaseName = $@"{DB_MODULE_NAME_PREFIX}{info.Cuid}";
             //What if the CUID is changed? Should we use the guid instead? 
             //But, guid is not unique across clients. So, we use cuid.
             //So, when we create the module, we use the cuid as the database name.

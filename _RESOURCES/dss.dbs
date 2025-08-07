@@ -358,9 +358,9 @@ ALTER TABLE dss_core.module MODIFY path VARCHAR(200)     COMMENT 'Path is not ma
 	</layout>
 	<layout name="msscore" id="24f2626d-ccb2-494d-bd2e-79024c8a6535" joined_routing="y" show_relation="columns" >
 		<entity schema="dss_core" name="client_keys" color="C1D8EE" x="57" y="532" />
-		<entity schema="dss_core" name="module" color="C1D8EE" x="266" y="304" />
 		<entity schema="dss_core" name="client" color="3986C1" x="57" y="304" />
-		<entity schema="dss_core" name="workspace" color="C1D8EE" x="513" y="304" />
+		<entity schema="dss_core" name="module" color="C1D8EE" x="266" y="304" />
+		<entity schema="dss_core" name="workspace" color="C1D8EE" x="475" y="304" />
 		<shape x="57" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[The concept of 'CONTROLLED' is that it expects all the names to be in either
 GUID or number format such that the application expects that the name related
