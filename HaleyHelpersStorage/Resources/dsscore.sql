@@ -1,8 +1,8 @@
 -- --------------------------------------------------------
 -- Host:                         127.0.0.1
--- Server version:               11.8.2-MariaDB - mariadb.org binary distribution
+-- Server version:               11.7.2-MariaDB - mariadb.org binary distribution
 -- Server OS:                    Win64
--- HeidiSQL Version:             12.10.0.7000
+-- HeidiSQL Version:             12.7.0.6850
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -46,6 +46,36 @@ CREATE TABLE IF NOT EXISTS `client_keys` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
+
+-- Dumping structure for procedure dss_core.DropDatabasesWithPrefix
+DELIMITER //
+CREATE PROCEDURE `DropDatabasesWithPrefix`(IN prefix VARCHAR(100))
+BEGIN
+  DECLARE done INT DEFAULT FALSE;
+  DECLARE db_name VARCHAR(255);
+  DECLARE cur CURSOR FOR
+    SELECT SCHEMA_NAME
+    FROM INFORMATION_SCHEMA.SCHEMATA
+    WHERE SCHEMA_NAME LIKE CONCAT(prefix, '%')
+      AND SCHEMA_NAME NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys');
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+  OPEN cur;
+
+  read_loop: LOOP
+    FETCH cur INTO db_name;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+    SET @drop_stmt = CONCAT('DROP DATABASE `', db_name, '`');
+    PREPARE stmt FROM @drop_stmt;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END LOOP;
+
+  CLOSE cur;
+END//
+DELIMITER ;
 
 -- Dumping structure for table dss_core.module
 CREATE TABLE IF NOT EXISTS `module` (

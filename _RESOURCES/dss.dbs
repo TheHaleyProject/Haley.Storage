@@ -2,14 +2,15 @@
 <project name="haley-dss" database="MariaDb" id="93003ef9-df78-41a8-abf9-c1beee74eaca" >
 	<schema name="dss_client" >
 		<table name="directory" prior="directo" >
-			<column name="id" type="BIGINT" mandatory="y" >
-				<identity><![CDATA[AUTO_INCREMENT]]></identity>
-			</column>
+			<column name="workspace" type="BIGINT" mandatory="y" />
 			<column name="parent" type="BIGINT" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
 				<comment><![CDATA[Can be null for root folders. We mark it as 0 for root folders]]></comment>
 			</column>
 			<column name="name" type="VARCHAR" length="120" mandatory="y" />
+			<column name="id" type="BIGINT" mandatory="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
 			<column name="display_name" type="VARCHAR" length="120" mandatory="y" />
 			<column name="created" type="TIMESTAMP" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
@@ -18,9 +19,12 @@
 				<defo><![CDATA[current_timestamp()]]></defo>
 				<column_options><![CDATA[ON UPDATE CURRENT_TIMESTAMP]]></column_options>
 			</column>
-			<column name="workspace" type="BIGINT" mandatory="y" />
 			<column name="guid" type="VARCHAR" length="48" mandatory="y" >
 				<defo><![CDATA['uuid()']]></defo>
+			</column>
+			<column name="deleted" type="BIT" mandatory="y" >
+				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[soft delete]]></comment>
 			</column>
 			<index name="pk_directory_0" unique="PRIMARY_KEY" >
 				<column name="id" />
@@ -38,48 +42,20 @@
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
-		<table name="doc_belongs_to" prior="doc_belongs" >
-			<column name="doc" type="BIGINT" mandatory="y" />
-			<column name="dir" type="BIGINT" mandatory="y" />
-			<index name="fk_doc_belongs_to_directory" unique="NORMAL" >
-				<column name="dir" />
-			</index>
-			<index name="fk_doc_belongs_to_document" unique="NORMAL" >
-				<column name="doc" />
-			</index>
-			<fk name="fk_doc_belongs_to_document" to_schema="dss_client" to_table="document" >
-				<fk_column name="doc" pk="id" />
-			</fk>
-			<fk name="fk_doc_belongs_to_directory_0" to_schema="dss_client" to_table="directory" >
-				<fk_column name="dir" pk="id" />
-			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
-		</table>
 		<table name="doc_info" prior="doc_name" >
 			<column name="extension" type="INT" />
 			<column name="file" type="BIGINT" mandatory="y" />
-			<column name="name" prior="original_name" type="VARCHAR" length="400" mandatory="y" />
-			<column name="display_name" prior="original_name" type="VARCHAR" length="240" mandatory="y" />
+			<column name="display_name" prior="original_name" type="VARCHAR" length="200" mandatory="y" />
+			<column name="saveas_name" type="VARCHAR" length="200" mandatory="y" />
 			<column name="path" type="TEXT" >
 				<comment><![CDATA[cached for performance]]></comment>
 			</column>
 			<column name="valid" type="INT" />
-			<column name="saveas_name" type="VARCHAR" length="120" mandatory="y" />
 			<index name="pk_file_info_0" unique="PRIMARY_KEY" >
 				<column name="file" />
 			</index>
-			<index name="idx_doc_info_name" unique="NORMAL" >
-				<column name="name" />
-			</index>
-			<index name="idx_doc_info" unique="NORMAL" >
-				<column name="extension" />
-				<column name="name" />
-			</index>
 			<fk name="fk_file_info_file_index_0" to_schema="dss_client" to_table="document" >
 				<fk_column name="file" pk="id" />
-			</fk>
-			<fk name="fk_doc_info_extension" to_schema="dss_client" to_table="extension" >
-				<fk_column name="extension" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -117,28 +93,45 @@
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
 			<column name="workspace" prior="parent" type="BIGINT" mandatory="y" />
-			<column name="guid" type="VARCHAR" length="48" mandatory="y" >
+			<column name="dir" type="BIGINT" mandatory="y" />
+			<column name="name" prior="saveas_name" type="VARCHAR" length="200" mandatory="y" />
+			<column name="cuid" prior="guid" type="VARCHAR" length="48" mandatory="y" >
 				<defo><![CDATA['uuid()']]></defo>
-				<comment><![CDATA[Its unique GUID, not generated from the hash]]></comment>
+				<comment><![CDATA[Collision Resistant Global unique identifier]]></comment>
 			</column>
 			<column name="created" prior="created_at" type="TIMESTAMP" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
 			</column>
 			<column name="modified" prior="modified_on" type="TIMESTAMP" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
+				<column_options><![CDATA[ON UPDATE CURRENT_TIMESTAMP]]></column_options>
 			</column>
-			<column name="stored_name" type="VARCHAR" length="240" mandatory="y" />
+			<column name="deleted" type="BIT" mandatory="y" >
+				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[Soft delete]]></comment>
+			</column>
 			<index name="pk_fileindex" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
 			<index name="unq_file_index" unique="UNIQUE_KEY" >
-				<column name="guid" />
+				<column name="cuid" />
 			</index>
 			<index name="fk_file_index_parent" unique="NORMAL" >
 				<column name="workspace" />
 			</index>
+			<index name="unq_document" unique="UNIQUE_KEY" >
+				<column name="workspace" />
+				<column name="dir" />
+				<column name="name" />
+			</index>
+			<index name="fk_document_directory" unique="NORMAL" >
+				<column name="dir" />
+			</index>
 			<fk name="fk_document_workspace" to_schema="dss_client" to_table="workspace" >
 				<fk_column name="workspace" pk="id" />
+			</fk>
+			<fk name="fk_document_directory" to_schema="dss_client" to_table="directory" >
+				<fk_column name="dir" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -309,16 +302,44 @@ We would have anyhow created the guid based on the provided name. If the client 
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
+		<procedure name="DropDatabasesWithPrefix" id="44f5048d-bf31-4cd2-831b-47ca38844d2c" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE PROCEDURE ${nameWithSchemaName}(IN prefix VARCHAR(100))
+BEGIN
+  DECLARE done INT DEFAULT FALSE;
+  DECLARE db_name VARCHAR(255);
+  DECLARE cur CURSOR FOR
+    SELECT SCHEMA_NAME
+    FROM INFORMATION_SCHEMA.SCHEMATA
+    WHERE SCHEMA_NAME LIKE CONCAT(prefix, '%')
+      AND SCHEMA_NAME NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys');
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+  OPEN cur;
+
+  read_loop: LOOP
+    FETCH cur INTO db_name;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+    SET @drop_stmt = CONCAT('DROP DATABASE `', db_name, '`');
+    PREPARE stmt FROM @drop_stmt;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END LOOP;
+
+  CLOSE cur;
+END]]></string>
+			<input_param name="prefix" jt="12" type="varchar" inOut="1" />
+		</procedure>
 	</schema>
 	<layout name="mssclient" id="3ffb53d2-b523-405c-b56e-4864481bd7c9" joined_routing="y" show_relation="cascade" >
+		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="266" y="171" />
+		<entity schema="dss_client" name="extension" color="C1D8EE" x="114" y="209" />
 		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="57" y="323" />
-		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="342" />
-		<entity schema="dss_client" name="workspace" color="C1D8EE" x="456" y="399" />
-		<entity schema="dss_client" name="doc_belongs_to" color="C1D8EE" x="437" y="266" />
-		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="171" />
-		<entity schema="dss_client" name="extension" color="C1D8EE" x="95" y="209" />
-		<entity schema="dss_client" name="directory" color="C1D8EE" x="608" y="285" />
-		<shape x="76" y="57" style="Rectangle" color="FF0000" >
+		<entity schema="dss_client" name="document" color="C1D8EE" x="266" y="342" />
+		<entity schema="dss_client" name="workspace" color="C1D8EE" x="437" y="228" />
+		<entity schema="dss_client" name="directory" color="C1D8EE" x="456" y="323" />
+		<shape x="95" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>
 		</shape>

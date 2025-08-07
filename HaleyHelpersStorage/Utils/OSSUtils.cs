@@ -32,7 +32,7 @@ namespace Haley.Utils
             return input;
         }
 
-        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<string,long> idGenerator = null,bool throwExceptions = false) {
+        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<string,long> idGenerator = null, Func<string,Guid> guidGenerator = null,bool throwExceptions = false) {
             if (nObj == null || !nObj.TryValidate(out _)) return (string.Empty, string.Empty);
             string result = string.Empty;
             long objId = 0;
@@ -46,26 +46,26 @@ namespace Haley.Utils
                     nObj.SaveAsName = nObj.Name;
                 break;
                 case OSSControlMode.Number:
-                if (nObj.Name.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode, idGenerator, throwExceptions)) {
+                if (nObj.Name.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode,generator: idGenerator, throwExceptions)) {
                     nObj.SaveAsName = objId.ToString();
                 }
                 break;
                 case OSSControlMode.Guid:
-                 if (nObj.Name.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode, throwExceptions)) {
+                 if (nObj.Name.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,generator:guidGenerator, throwExceptions)) {
                     nObj.SaveAsName = objGuid.ToString("N");
                 }
                 break;
                 case OSSControlMode.Both:
                 //In case of both, the problem is, we need to first ensure, we are able to parse them.. and then only go ahead with generating.
                 //Focus on parsing first and then if doesn't work, hten jump to generate. Even in that case we need to see through thenend.
-                if (nObj.Name.TryPopulateControlledID(out objId, OSSParseMode.Parse, idGenerator, false)) {
+                if (nObj.Name.TryPopulateControlledID(out objId, OSSParseMode.Parse, null, false)) {
                     nObj.SaveAsName = objId.ToString();
-                } else if(nObj.Name.TryPopulateControlledGUID(out objGuid, OSSParseMode.Parse, false)){
+                } else if(nObj.Name.TryPopulateControlledGUID(out objGuid, OSSParseMode.Parse,null, false)){
                     nObj.SaveAsName = objGuid.ToString("N");
                 } else if (nObj.Name.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode, idGenerator, false)) {
                     //Try with original parsing mode, ,may be we are asked to generte. We dont' know;
                     nObj.SaveAsName = objId.ToString();
-                } else if (nObj.Name.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode, throwExceptions)) {
+                } else if (nObj.Name.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,guidGenerator, throwExceptions)) {
                     nObj.SaveAsName = objGuid.ToString("N");
                 }
                 break;
@@ -206,7 +206,7 @@ namespace Haley.Utils
             return path;
         }
 
-        public static bool TryPopulateControlledGUID(this string value, out Guid result, OSSParseMode pmode = OSSParseMode.Parse, bool throwExceptions = false) {
+        public static bool TryPopulateControlledGUID(this string value, out Guid result, OSSParseMode pmode, Func<string, Guid> generator = null, bool throwExceptions = false) {
             result = Guid.Empty;
             //Check if the value is already in the format of a hash.
             //This method is not responsible for removing the Hyphens, if found.
@@ -221,10 +221,15 @@ namespace Haley.Utils
                 case OSSParseMode.ParseOrGenerate:
                     //Parse Mode : //Check if currently, the value is hashed or not.
                     
-                    if (workingValue.IsValidGuid(out guid)) {
-                    } else if (workingValue.IsCompactGuid(out guid)) {
+                    if (workingValue.IsValidGuid(out guid)) { //Parse
+                    } else if (workingValue.IsCompactGuid(out guid)) { //Parse
                     } else if (pmode == OSSParseMode.ParseOrGenerate) {
-                    guid = workingValue.ToDBName().CreateGUID(HashMethod.Sha256);
+                    //For generate, first preference if generator is available.
+                    if(generator != null) {
+                        guid = generator.Invoke(workingValue.ToDBName());
+                    } else {
+                        guid = workingValue.ToDBName().CreateGUID(HashMethod.Sha256);
+                    }
                     } else {
                         if (throwExceptions) throw new ArgumentNullException("Unable to generate the GUID. Please check the input.");
                         return false;
@@ -232,13 +237,17 @@ namespace Haley.Utils
                 break;
                 case OSSParseMode.Generate:
                 //Regardless of what is provided, we generate the hash based GUID.
+                if (generator != null) {
+                    guid = generator.Invoke(workingValue.ToDBName());
+                } else {
                     guid = workingValue.ToDBName().CreateGUID(HashMethod.Sha256);
+                }
                 break;
             }
             result = guid;
             return true;
         }
-        public static bool TryPopulateControlledID(this string value, out long result, OSSParseMode pmode = OSSParseMode.Parse, Func<string,long> generator = null,bool throwExceptions = false) {
+        public static bool TryPopulateControlledID(this string value, out long result, OSSParseMode pmode , Func<string,long> generator = null,bool throwExceptions = false) {
             result = 0;
             if (string.IsNullOrWhiteSpace(value)) {
                 if (throwExceptions) throw new ArgumentNullException("Unable to generate the ID. The provided input is null or empty.");
