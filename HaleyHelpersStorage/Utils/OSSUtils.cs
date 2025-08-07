@@ -19,7 +19,7 @@ namespace Haley.Utils
 {
     public static class OSSUtils {
         static (int length,int depth) defaultSplitProvider(bool isInputNumber) {
-            if (!isInputNumber) return (2, 6); //Split by 2 and go upto 6 depth.
+            if (!isInputNumber) return (1, 8); //Split by 1 and go upto 8 depth for non numbers.
             return (2, 0); //For number go full round
         }
         public static string SanitizePath(this string input) {
@@ -99,12 +99,6 @@ namespace Haley.Utils
             if (splitProvider == null) splitProvider = defaultSplitProvider;
             bool isNumber = input.IsNumber();
             var sinfo = splitProvider(isNumber);
-            //if (sinfo.depth < 0) sinfo.depth = 0;
-            //if (sinfo.depth > 12) sinfo.depth = 12;
-
-            //if (sinfo.length < 0) sinfo.length = 0; //Which means there is not split.
-            //if (sinfo.length > 8) sinfo.length = 8;
-
             return input.Separate(sinfo.length, sinfo.depth, addPadding: isNumber ? true : false, resultAsPath: true);
         }
 
