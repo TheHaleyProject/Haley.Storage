@@ -128,7 +128,7 @@ namespace Haley.Utils
             string separator = "##";
             //Join the inputs with the separator and generate a GUID.
             string joined = string.Join(separator, inputs.Where(q=> !string.IsNullOrWhiteSpace(q)).Select(p=> p));
-            return joined.CreateGUID().ToString("N");
+            return joined.CreateGUID(HashMethod.Sha256).ToString("N");
         }
 
         public static string BuildStoragePath(this IOSSRead input, string basePath, bool allowRootAccess = false, bool readonlyMode = false) {

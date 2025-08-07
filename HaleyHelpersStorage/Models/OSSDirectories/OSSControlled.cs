@@ -14,6 +14,7 @@ namespace Haley.Models {
         public OSSControlled(string displayname = DEFAULTNAME, OSSControlMode control = OSSControlMode.None, OSSParseMode parse = OSSParseMode.Parse) :base(displayname) {
             ControlMode = control;
             ParseMode = parse;
+            GenerateCuid();
         }
     }
 }

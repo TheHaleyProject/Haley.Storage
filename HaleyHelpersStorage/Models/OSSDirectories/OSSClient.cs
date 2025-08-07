@@ -16,6 +16,7 @@ namespace Haley.Models {
             if (!base.TryValidate(out message)) return false;
             if (string.IsNullOrEmpty(SigningKey) || string.IsNullOrEmpty(EncryptKey) || string.IsNullOrEmpty(PasswordHash)) {
                 message = "Keys Cannot be empty for the OSSClient";
+                return false;   
             }
 
             if (string.IsNullOrEmpty(SaveAsName) || string.IsNullOrEmpty(Path)) {

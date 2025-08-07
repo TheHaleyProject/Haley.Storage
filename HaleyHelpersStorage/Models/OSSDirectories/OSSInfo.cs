@@ -19,13 +19,17 @@ namespace Haley.Models {
                 } else {
                     _displayName = DEFAULTNAME;
                 }
-                if (!TryValidate(out var msg)) throw new Exception(msg);
+                if (!ValidateInternal(out var msg)) throw new Exception(msg);
                 Name = _displayName.ToDBName(); //Db compatible name
                 Guid = Name.CreateGUID(HashMethod.Sha256).ToString("N");
             }
         }
 
         public virtual bool TryValidate(out string message) {
+            return ValidateInternal(out message);
+        }
+
+        bool ValidateInternal(out string message) {
             message = string.Empty;
             if (string.IsNullOrWhiteSpace(DisplayName)) {
                 message = "Display Name cannot be empty";
@@ -38,12 +42,16 @@ namespace Haley.Models {
             return true;
         }
 
-        protected void GenerateCuid(params string[] inputs) {
+        protected virtual void GenerateCuid() {
+            Cuid = OSSUtils.GenerateCuid(DisplayName);
+        }
 
+        protected void GenerateCuid(params string[] inputs) {
             Cuid = OSSUtils.GenerateCuid(inputs);
         }
 
         public string Guid { get; private set; } //Sha256 generated from the name and a guid is created from there.
+        [IgnoreMapping]
         public string Cuid { get; protected set; } //Collision resistant Unique identifier
         public OSSInfo(string displayName) {
             DisplayName = displayName ?? DEFAULTNAME;

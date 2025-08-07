@@ -52,26 +52,27 @@ namespace Haley.Services {
             if (!client.TryValidate(out msg)) new Feedback(false, msg);
 
             var client_path = GenerateBasePath(client, OSSComponent.Client).path; //For client, we only prefer hash mode.
-            if (!Directory.Exists(client_path)) return new Feedback(false, $@"Directory not found for the client {client.DisplayName}");
+            var bPath = Path.Combine(BasePath, client_path);
+            if (!Directory.Exists(bPath)) return new Feedback(false, $@"Directory not found for the client {client.DisplayName}");
             if (client_path.Contains("..")) return new Feedback(false, "Client Path contains invalid characters");
 
             //MODULE INFORMATION BASIC VALIDATION
             var modPath = GenerateBasePath(input, OSSComponent.Module).path; //For client, we only prefer hash mode.
-            var path = Path.Combine(BasePath, client_path, modPath); //Including Client Path
+            bPath = Path.Combine(bPath, modPath); //Including Client Path
 
             //Create these folders and then register them.
-            if (!Directory.Exists(path) && WriteMode) {
-                Directory.CreateDirectory(path); //Create the directory.
+            if (!Directory.Exists(bPath) && WriteMode) {
+                Directory.CreateDirectory(bPath); //Create the directory.
             }
 
             var moduleInfo = input.MapProperties(new OSSModule(client.Name) { Path = modPath });
             if (WriteMode) {
-                var metaFile = Path.Combine(path, MODULEMETAFILE);
+                var metaFile = Path.Combine(bPath, MODULEMETAFILE);
                 File.WriteAllText(metaFile, moduleInfo.ToJson());
             }
 
             var result = new Feedback(true, $@"Module {input.DisplayName} is registered");
-            if (!Directory.Exists(path)) result.SetStatus(false).SetMessage("Directory is not created. Please ensure if the WriteMode is turned ON or proper access is availalbe.");
+            if (!Directory.Exists(bPath)) result.SetStatus(false).SetMessage("Directory is not created. Please ensure if the WriteMode is turned ON or proper access is availalbe.");
 
             if (Indexer == null) return result;
             var idxResult = await Indexer.RegisterModule(moduleInfo);

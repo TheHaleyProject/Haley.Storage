@@ -1,8 +1,8 @@
 -- --------------------------------------------------------
 -- Host:                         127.0.0.1
--- Server version:               11.7.2-MariaDB - mariadb.org binary distribution
+-- Server version:               11.8.2-MariaDB - mariadb.org binary distribution
 -- Server OS:                    Win64
--- HeidiSQL Version:             12.7.0.6850
+-- HeidiSQL Version:             12.10.0.7000
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS `client` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `display_name` varchar(100) NOT NULL,
-  `guid` varchar(48) NOT NULL DEFAULT uuid(),
+  `guid` varchar(48) NOT NULL DEFAULT 'uuid()',
   `path` varchar(140) NOT NULL COMMENT 'Created only at register time.\nWe would have anyhow created the guid based on the provided name. If the client is created as managed, then the path should be based on the guid. or else it should be based on the name itself.',
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
-  `modified` timestamp NOT NULL DEFAULT current_timestamp(),
+  `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_client` (`name`),
   UNIQUE KEY `unq_client_1` (`guid`)
@@ -50,15 +50,15 @@ CREATE TABLE IF NOT EXISTS `client_keys` (
 -- Dumping structure for table dss_core.module
 CREATE TABLE IF NOT EXISTS `module` (
   `parent` int(11) NOT NULL,
-  `id` int(11) NOT NULL,
+  `guid` varchar(48) NOT NULL,
+  `cuid` varchar(48) NOT NULL COMMENT 'collision resistant unique identifier',
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(120) NOT NULL,
   `display_name` varchar(120) NOT NULL,
-  `guid` varchar(48) NOT NULL,
   `path` varchar(200) NOT NULL,
-  `created` datetime NOT NULL DEFAULT current_timestamp(),
   `active` bit(1) NOT NULL DEFAULT b'1',
+  `created` datetime NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `cuid` varchar(48) NOT NULL COMMENT 'collision resistant unique identifier',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_directory_01` (`parent`,`name`),
   UNIQUE KEY `unq_module` (`parent`,`guid`),
@@ -71,17 +71,17 @@ CREATE TABLE IF NOT EXISTS `module` (
 -- Dumping structure for table dss_core.workspace
 CREATE TABLE IF NOT EXISTS `workspace` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cuid` varchar(48) NOT NULL COMMENT 'collision resistant unique identifier',
+  `guid` varchar(48) NOT NULL,
   `parent` int(11) NOT NULL,
   `name` varchar(120) NOT NULL,
   `display_name` varchar(120) NOT NULL,
-  `guid` varchar(48) NOT NULL,
   `path` varchar(200) NOT NULL,
   `active` bit(1) NOT NULL DEFAULT b'1',
-  `created` timestamp NOT NULL DEFAULT current_timestamp(),
-  `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `control_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0 - none\n1 - numbers\n2 - hash\n3 - both',
   `parse_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0- Parse\n1- Generate\n2- Parse or generate',
-  `cuid` varchar(48) NOT NULL COMMENT 'collision resistant unique identifier',
+  `created` timestamp NOT NULL DEFAULT current_timestamp(),
+  `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_workspace` (`parent`,`name`),
   UNIQUE KEY `unq_workspace_0` (`parent`,`guid`),
