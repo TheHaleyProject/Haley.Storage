@@ -1,8 +1,8 @@
 -- --------------------------------------------------------
 -- Host:                         127.0.0.1
--- Server version:               11.7.2-MariaDB - mariadb.org binary distribution
+-- Server version:               11.8.2-MariaDB - mariadb.org binary distribution
 -- Server OS:                    Win64
--- HeidiSQL Version:             12.7.0.6850
+-- HeidiSQL Version:             12.10.0.7000
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -21,13 +21,13 @@ USE `dss_client`;
 
 -- Dumping structure for table dss_client.directory
 CREATE TABLE IF NOT EXISTS `directory` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `workspace` bigint(20) NOT NULL,
   `parent` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Can be null for root folders. We mark it as 0 for root folders',
   `name` varchar(120) NOT NULL,
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `display_name` varchar(120) NOT NULL,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `workspace` bigint(20) NOT NULL,
   `guid` varchar(48) NOT NULL DEFAULT 'uuid()',
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT 'soft delete',
   PRIMARY KEY (`id`),
@@ -42,11 +42,11 @@ CREATE TABLE IF NOT EXISTS `directory` (
 CREATE TABLE IF NOT EXISTS `document` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `workspace` bigint(20) NOT NULL,
+  `dir` bigint(20) NOT NULL,
+  `name` varchar(200) NOT NULL,
   `cuid` varchar(48) NOT NULL DEFAULT 'uuid()' COMMENT 'Collision Resistant Global unique identifier',
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
-  `modified` timestamp NOT NULL DEFAULT current_timestamp(),
-  `name` varchar(200) NOT NULL,
-  `dir` bigint(20) NOT NULL,
+  `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT 'Soft delete',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_file_index` (`cuid`),
@@ -64,9 +64,9 @@ CREATE TABLE IF NOT EXISTS `doc_info` (
   `extension` int(11) DEFAULT NULL,
   `file` bigint(20) NOT NULL,
   `display_name` varchar(200) NOT NULL,
+  `saveas_name` varchar(200) NOT NULL,
   `path` text DEFAULT NULL COMMENT 'cached for performance',
   `valid` int(11) DEFAULT NULL,
-  `saveas_name` varchar(200) NOT NULL,
   PRIMARY KEY (`file`),
   CONSTRAINT `fk_file_info_file_index_0` FOREIGN KEY (`file`) REFERENCES `document` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;

@@ -155,52 +155,45 @@ namespace Haley.Utils
            return Path.Combine(paths.ToArray()); //Will it be in proper order??
         }
 
-        public static string BuildStoragePath(this List<OSSRoute> routes, string basePath, bool allow_root_access, bool readonlyMode) {
+        public static string BuildStoragePath(this IOSSRoute route, string basePath, bool allow_root_access, bool readonlyMode) {
 
             string path = basePath;  
             if (!Directory.Exists(path)) throw new ArgumentException("BasePath Directory doesn't exists.");
 
             //Pull the lastone out.
-            if (routes == null || routes.Count < 1) return path; //Directly create inside the basepath (applicable in few cases);
-                                                                 //If one of the path is trying to make a root access, should we allow or deny?
+            if (route == null) return path; //Directly create inside the basepath (applicable in few cases);
+                                            //If one of the path is trying to make a root access, should we allow or deny?
+                                            //Route is expected to have one or more parents.
+                                            // So we loop through the routes and reach the last route without any parent and start building from there.
+            string value = SanitizePath(route.Path);
 
-            for (int i = 0; i < routes.Count; i++) { 
-
-                //PATH PROCESSING
-                var route = routes[i];
-                //If we are at the end, ignore
-                string value = route.Path;
-                value = SanitizePath(value);
-
-                if (string.IsNullOrWhiteSpace(value)) {
-                    if (allow_root_access) continue;
-                    //We are trying a root access
-                    throw new AccessViolationException("Root directory access is not allowed.");
+            if (string.IsNullOrWhiteSpace(value) || route.IsVirutal) {
+                if (allow_root_access) { 
+                //Proably this is just virtual and doesn't have a path.
                 }
-
-                bool isEndPart = (i == routes.Count - 1); //Are we at the end of the line?
-                path = Path.Combine(path, value);
-
-                //If the route is a file, just jump out. Because, if it is a file, may be we are either uploading or fetching the file. the file might even contain it's own sub path as well. 
-                if (route.IsFile) break;
-
-                //DIRECTORY PROCESSING & CREATION
-
-                //1. a) Dir Creation disallowed b) Dir doesn't exists c) The route is not of type Client or Module. 
-                if (!Directory.Exists(path) && !route.CreateIfMissing) {
-                    //Whether it is a file or a directory, if user doesn't have access to create it, throw exception.
-                    //We cannot allow to create Client & Module paths.
-                    string errMsg = $@"Directory doesn't exists : {route.Key ?? route.Path}";
-
-                    //2.1 ) Are we in the middle, trying to ensure some directory exists?
-                    if (isEndPart && !readonlyMode) errMsg = $@"Access denied to create/delete the directory :{route.Key ?? route.Path}";
-                    throw new ArgumentException(errMsg);
-                }
-
-                //3. Are we trying to create a directory as our main goal?
-                if (isEndPart) break;
-                if (!(path?.TryCreateDirectory().Result ?? false)) throw new ArgumentException($@"Unable to create the directory : {route.Key ?? route.Path}");
+                
+                //We are trying a root access
+                throw new AccessViolationException("Root directory access is not allowed.");
             }
+
+            path = Path.Combine(path, value);
+
+            if (route.IsFile) return path;
+
+            //1. a) Dir Creation disallowed b) Dir doesn't exists c) The route is not of type Client or Module. 
+            if (!Directory.Exists(path) && !route.CreatingMissingParent) {
+                //Whether it is a file or a directory, if user doesn't have access to create it, throw exception.
+                //We cannot allow to create Client & Module paths.
+                string errMsg = $@"Directory doesn't exists : {route.Name ?? route.Path}";
+
+                //2.1 ) Are we in the middle, trying to ensure some directory exists?
+                if (isEndPart && !readonlyMode) errMsg = $@"Access denied to create/delete the directory :{route.Name ?? route.Path}";
+                throw new ArgumentException(errMsg);
+            }
+
+            //3. Are we trying to create a directory as our main goal?
+            if (isEndPart) break;
+            if (!(path?.TryCreateDirectory().Result ?? false)) throw new ArgumentException($@"Unable to create the directory : {route.Name ?? route.Path}");
 
             if (!path.StartsWith(basePath)) throw new ArgumentOutOfRangeException("The generated path is not accessible. Please check the inputs.");
             return path;

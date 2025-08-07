@@ -19,7 +19,7 @@
 				<defo><![CDATA[current_timestamp()]]></defo>
 				<column_options><![CDATA[ON UPDATE CURRENT_TIMESTAMP]]></column_options>
 			</column>
-			<column name="guid" type="VARCHAR" length="48" mandatory="y" >
+			<column name="cuid" prior="guid" type="VARCHAR" length="48" mandatory="y" >
 				<defo><![CDATA['uuid()']]></defo>
 			</column>
 			<column name="deleted" type="BIT" mandatory="y" >
@@ -35,7 +35,7 @@
 				<column name="name" />
 			</index>
 			<index name="unq_directory_0" unique="UNIQUE_KEY" >
-				<column name="guid" />
+				<column name="cuid" />
 			</index>
 			<fk name="fk_directory_workspace" to_schema="dss_client" to_table="workspace" >
 				<fk_column name="workspace" pk="id" />
