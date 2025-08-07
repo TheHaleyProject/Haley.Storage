@@ -78,17 +78,20 @@ namespace Haley.Utils {
             await EnsureValidation();
 
             //Check if client exists. If not throw exeception or don't register? //Send feedback.
-            var cexists = await _agw.Scalar(new AdapterArgs(_key) { Query = CLIENT.EXISTS }, (NAME, info.Client.Name));
-            if (cexists == null || !(cexists is int clientId)) throw new ArgumentException($@"Client {info.Client.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
-            var mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS }, (NAME, info.Name), (PARENT, clientId));
+            //var cexists = await _agw.Scalar(new AdapterArgs(_key) { Query = CLIENT.EXISTS }, (NAME, info.Client.Name));
+            //if (cexists == null || !(cexists is int clientId)) throw new ArgumentException($@"Client {info.Client.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
+            //var mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS }, (NAME, info.Name), (PARENT, clientId));
+            var mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS_BY_CUID }, (CUID,info.Cuid));
             if (mexists != null && mexists is long mId) {
                 //Module exists. .just update it.
-                await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPDATE }, (DNAME, info.DisplayName), (PATH, info.Path),(CONTROLMODE,(int)info.ControlMode),(PARSEMODE,(int)info.ParseMode), (ID, mId));
+                await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPDATE }, (DNAME, info.DisplayName), (PATH, info.Path), (ID, mId));
             } else {
-                await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPSERT }, (PARENT, clientId), (NAME, info.Name), (DNAME, info.DisplayName), (GUID, info.Guid), (PATH, info.Path),(CONTROLMODE, (int)info.ControlMode), (PARSEMODE, (int)info.ParseMode));
+                var cexists = await _agw.Scalar(new AdapterArgs(_key) { Query = CLIENT.EXISTS }, (NAME, info.Client.Name));
+                if (cexists == null || !(cexists is int clientId)) throw new ArgumentException($@"Client {info.Client.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
+                await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPSERT }, (PARENT, clientId), (NAME, info.Name), (DNAME, info.DisplayName), (GUID, info.Guid), (PATH, info.Path), (CUID, info.Cuid));
             }
 
-            mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS }, (NAME, info.Name), (PARENT, clientId));
+            mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS_BY_CUID }, (CUID, info.Cuid));
 
             if (mexists != null && mexists is long moduleId) {
                 //Every time a client is sucessfully done. We validate if it is present or not.
@@ -104,23 +107,23 @@ namespace Haley.Utils {
             //We generate the hash_guid ourselves for the client.
             await EnsureValidation();
 
-            //Check if client exists. If not throw exeception or don't register? //Send feedback.
-            var cexists = await _agw.Scalar(new AdapterArgs(_key) { Query = CLIENT.EXISTS }, (NAME, info.Client.Name));
-            if (cexists == null || !(cexists is int clientId)) throw new ArgumentException($@"Client {info.Client.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
-            var mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS }, (NAME, info.Name), (PARENT, clientId));
-            if (mexists != null && mexists is long mId) {
+            var wsExists = await _agw.Scalar(new AdapterArgs(_key) { Query = WORKSPACE.EXISTS_BY_CUID }, (CUID, info.Cuid));
+            if (wsExists != null && wsExists is long wsId) {
                 //Module exists. .just update it.
-                await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPDATE }, (DNAME, info.DisplayName), (PATH, info.Path), (CONTROLMODE, (int)info.ControlMode), (PARSEMODE, (int)info.ParseMode), (ID, mId));
+                await _agw.NonQuery(new AdapterArgs(_key) { Query = WORKSPACE.UPDATE }, (DNAME, info.DisplayName), (PATH, info.Path), (CONTROLMODE, (int)info.ControlMode), (PARSEMODE, (int)info.ParseMode),(ID, wsId));
             } else {
-                await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPSERT }, (PARENT, clientId), (NAME, info.Name), (DNAME, info.DisplayName), (GUID, info.Guid), (PATH, info.Path), (CONTROLMODE, (int)info.ControlMode), (PARSEMODE, (int)info.ParseMode));
+                var moduleCuid = OSSUtils.GenerateCuid(info.Client.Name, info.Module.Name);
+                var mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS_BY_CUID }, (CUID, moduleCuid));
+                if (mexists == null || !(mexists is int modId)) throw new ArgumentException($@"Module {info.Module.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
+                await _agw.NonQuery(new AdapterArgs(_key) { Query = WORKSPACE.UPSERT }, (PARENT, modId), (NAME, info.Name), (DNAME, info.DisplayName), (GUID, info.Guid), (PATH, info.Path), (CUID, info.Cuid), (CONTROLMODE, (int)info.ControlMode), (PARSEMODE, (int)info.ParseMode));
             }
 
-            mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS }, (NAME, info.Name), (PARENT, clientId));
-            
-            if (mexists != null && mexists is long moduleId) {
+            wsExists = await _agw.Scalar(new AdapterArgs(_key) { Query = WORKSPACE.EXISTS_BY_CUID }, (CUID, info.Cuid));
+
+            if (wsExists != null && wsExists is long) {
                 //Every time a client is sucessfully done. We validate if it is present or not.
-                await AddComponentCache(info, CreateModuleDBInstance);
-                return new Feedback(true, "Module Indexed.") { Result = moduleId };
+                await AddComponentCache(info);
+                return new Feedback(true, "WorkSpace Indexed.") { Result = (long)wsExists };
             }
 
             return new Feedback(false, "Unable to index the module");

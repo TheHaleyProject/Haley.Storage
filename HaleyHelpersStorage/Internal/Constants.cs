@@ -12,6 +12,7 @@ namespace Haley.Internal {
         public const string NAME = $@"@{nameof(NAME)}";
         public const string DNAME = $@"@{nameof(DNAME)}";
         public const string GUID = $@"@{nameof(GUID)}";
+        public const string CUID = $@"@{nameof(CUID)}";
         public const string PATH = $@"@{nameof(PATH)}";
         public const string SUFFIX_DIR = $@"@{nameof(SUFFIX_DIR)}";
         public const string SUFFIX_FILE = $@"@{nameof(SUFFIX_FILE)}";
@@ -25,7 +26,6 @@ namespace Haley.Internal {
         public const string PARENT = $@"@{nameof(PARENT)}";
         public const string CONTROLMODE = $@"@{nameof(CONTROLMODE)}";
         public const string PARSEMODE = $@"@{nameof(PARSEMODE)}";
-
     }
 
     internal class IndexingQueries {
@@ -39,13 +39,15 @@ namespace Haley.Internal {
         
         public class MODULE {
             public const string EXISTS = $@"select m.id from module as m where m.name = {NAME} and m.parent = {PARENT} LIMIT 1;";
-            public const string UPSERT = $@"insert into module (parent,name, display_name,guid,path,control_mode,parse_mode) values ({PARENT}, {NAME},{DNAME},{GUID},{PATH}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path);";
+            public const string EXISTS_BY_CUID = $@"select m.id from module as m where m.cuid = {CUID} LIMIT 1;";
+            public const string UPSERT = $@"insert into module (parent,name, display_name,guid,path,cuid) values ({PARENT}, {NAME},{DNAME},{GUID},{PATH},{CUID}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path);";
             public const string UPDATE = $@"update module set display_name = {DNAME}, path = {PATH} where id = {ID};";
         }
         public class WORKSPACE {
-            public const string EXISTS = $@"select m.id from module as m where m.name = {NAME} and m.parent = {PARENT} LIMIT 1;";
-            public const string UPSERT = $@"insert into module (parent,name, display_name,guid,path,control_mode,parse_mode) values ({PARENT}, {NAME},{DNAME},{GUID},{PATH},{CONTROLMODE},{PARSEMODE}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),control_mode=VALUES(control_mode),parse_mode=VALUES(parse_mode);";
-            public const string UPDATE = $@"update module set display_name = {DNAME}, path = {PATH},control_mode={CONTROLMODE},parse_mode={PARSEMODE} where id = {ID};";
+            public const string EXISTS = $@"select ws.id from workspace as ws where ws.name = {NAME} and ws.parent = {PARENT} LIMIT 1;";
+            public const string EXISTS_BY_CUID = $@"select ws.id from workspace as ws where ws.cuid = {CUID} LIMIT 1;";
+            public const string UPSERT = $@"insert into workspace (parent,name, display_name,guid,path,cuid,control_mode,parse_mode) values ({PARENT}, {NAME},{DNAME},{GUID},{PATH},{CUID},{CONTROLMODE},{PARSEMODE}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),control_mode=VALUES(control_mode),parse_mode=VALUES(parse_mode);";
+            public const string UPDATE = $@"update workspace set display_name = {DNAME}, path = {PATH},control_mode={CONTROLMODE},parse_mode={PARSEMODE} where id = {ID};";
         }
     }
 }
