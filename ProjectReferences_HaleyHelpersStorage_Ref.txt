@@ -1,0 +1,7 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <HaleyAbstractions>$(SolutionDir)..\HaleyAbstractions\HaleyAbstractions</HaleyAbstractions>
+    <HaleyExtensions>$(SolutionDir)..\HaleyExtensions\HaleyExtensions</HaleyExtensions>
+    <HaleyHelpers>$(SolutionDir)..\HaleyHelpers\HaleyHelpers</HaleyHelpers>
+  </PropertyGroup>
+</Project>
