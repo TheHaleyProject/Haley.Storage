@@ -16,7 +16,7 @@
 
 
 -- Dumping database structure for dss_core
-CREATE DATABASE IF NOT EXISTS `dss_core` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
+CREATE DATABASE IF NOT EXISTS `dss_core`; /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
 USE `dss_core`;
 
 -- Dumping structure for table dss_core.client

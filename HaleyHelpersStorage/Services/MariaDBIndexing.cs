@@ -8,9 +8,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.AccessControl;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using static Haley.Internal.IndexingConstant;
@@ -144,7 +146,36 @@ namespace Haley.Utils {
                 var dbname = _agw[_key].Info?.DBName ?? DB_CORE_FALLBACK_NAME; //This is supposedly our db name.
                 content = content.Replace(DB_CORE_SEARCH_TERM, dbname);
                 //?? Should we run everything in one go or run as separate statements???
-                await _agw.NonQuery(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = content });
+                //if the input contains any delimiter or procedure, remove them.
+                object queryContent = content;
+                List<string> procedures = new();
+                if (content.Contains("Delimiter", StringComparison.InvariantCultureIgnoreCase)) {
+                    //Step 1 : Remove delimiter lines
+                    content = Regex.Replace(content, @"DELIMITER\s+\S+", "", RegexOptions.IgnoreCase); //Remove the delimiter comments
+                                                                                                       //Step 2 : Remove version-specific comments
+                    content = Regex.Replace(content, @"/\*!.*?\*/;", "", RegexOptions.Singleline);
+                    //Step 3 : Extract all Procedures
+                    string pattern = @"CREATE\s+PROCEDURE.*?END\s*//";
+                    var matches = Regex.Matches(content, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+                    foreach (Match match in matches) {
+                        string proc = match.Value;
+                        proc = proc.Replace("//", ";").Trim();
+                        procedures.Add(proc);
+                        content = content.Replace(match.Value, "");
+                    }
+                    // Step 4: Split remaining SQL by semicolon
+                    queryContent = Regex.Split(content, @";\s*(?=\n|$)", RegexOptions.Multiline);
+                    //queryContent = Regex.Split(content, @";\s*(?=\n|$)", RegexOptions.Multiline);
+                }
+
+                var handler = _agw.GetTransactionHandler(_key);
+                using (handler.Begin(true)) {
+                    await _agw.NonQuery(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = queryContent }.ForTransaction(handler));
+                    if (procedures.Count > 0) {
+                        await _agw.NonQuery(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = procedures.ToArray() }.ForTransaction(handler));
+                    }
+                }
                 isValidated = true;
             } catch (Exception ex) {
                 throw ex;
