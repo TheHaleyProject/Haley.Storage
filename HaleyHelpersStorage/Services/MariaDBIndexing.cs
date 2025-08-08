@@ -63,11 +63,11 @@ namespace Haley.Utils {
             var dirParent = request.Folder?.Parent?.Id ?? 0;
             var dirName = request.Folder?.Name ?? OSSInfo.DEFAULTNAME;
             var dirDbName = dirName.ToDBName();
-            var dir_exists = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS }, (WSPACE, ws_id),(PARENT,dirParent),(NAME, dirDbName));
-            if (dir_exists == null) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.INSERT }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName),(DNAME,dirName));
-             dir_exists = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName));
-            if (dir_exists == null) throw new Exception($@"Unable to insert the directory {dirName} to the workspace : {ws_id} into the database {request.Module.Cuid}");
-            return (true, ((long)dir_exists, request.Module.Cuid));
+            var existing = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS ,Filter = ResultFilter.FirstDictionary}, (WSPACE, ws_id),(PARENT,dirParent),(NAME, dirDbName));
+            if (existing == null || !(existing is Dictionary<string,object> dic1) || dic1.Count < 1) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.INSERT }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName),(DNAME,dirName));
+             existing = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS ,Filter = ResultFilter.FirstDictionary }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName));
+            if (existing == null || !(existing is Dictionary<string, object> dic) || dic.Count < 1) throw new Exception($@"Unable to insert the directory {dirName} to the workspace : {ws_id} into the database {request.Module.Cuid}");
+            return (true, ((long)dic["id"], (string)dic["cuid"]));
         }
 
         async Task<(long id,Guid guid)> UIDGeneratorInternal(IOSSRead request) {
