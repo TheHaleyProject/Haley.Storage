@@ -9,8 +9,8 @@ namespace Haley.Models {
         public IOSSControlled Client { get; private set; } 
         public IOSSControlled Module { get; private set; }
         public IOSSControlled Workspace { get; private set; } 
-        public int Version { get; set; } = 0; //Send latest
-        public IOSSRoute Route { get; set; }  //Initialization. We can only then clear, or Add.
+        public IOSSFileRoute File { get; set; }  
+        public IOSSFolderRoute Folder { get; set; }
         public virtual OSSReadRequest SetComponent(OSSControlled input, OSSComponent type) {
             switch (type) {
                 case OSSComponent.Client:

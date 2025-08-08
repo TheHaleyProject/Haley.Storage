@@ -102,7 +102,7 @@ namespace Haley.Services {
         }
         public void EnsureStorageRoutes(IOSSRead input) {
             //The last storage route should be in the format of a file
-            if (input.StorageRoutes.Count < 1 || !input.StorageRoutes.Last().IsFile) {
+            if (input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {
                 //We are trying to upload a file but the last storage route is not in the format of a file.
                 //We need to see if the filestream is present and take the name from there.
                 //Priority for the name comes from TargetName
@@ -129,13 +129,15 @@ namespace Haley.Services {
                 } else {
                     targetFilePath = targetFileName.ToDBName(); //Just lower it 
                 }
-                input.StorageRoutes.Add(new OSSRoute(targetFileName, targetFilePath, true, false));
+
+                if (input.File == null)  input.File = new OSSFileRoute(targetFileName, targetFilePath);
+                input.File.Path = targetFilePath;
             }
         }
-        public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool ensureFileRoute = true, bool allowRootAccess = false, bool readonlyMode = false) {
+        public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool for_file , bool allowRootAccess = false, bool readonlyMode = false) {
             var bpath = FetchBasePath(input);
-            if (ensureFileRoute) EnsureStorageRoutes(input);
-            var path = input?.BuildStoragePath(bpath, allowRootAccess, readonlyMode); //This will also ensure we are not trying to delete something 
+            if (for_file) EnsureStorageRoutes(input);
+            var path = input?.BuildStoragePath(bpath,for_file, allowRootAccess, readonlyMode); //This will also ensure we are not trying to delete something 
             return (bpath, path);
         }
     }

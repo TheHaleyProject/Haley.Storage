@@ -15,7 +15,7 @@ namespace Haley.Services {
                     result.Message = "Application is in Read-Only mode.";
                     return result;
                 }
-                var gPaths = ProcessAndBuildStoragePath(input, ensureFileRoute: true);
+                var gPaths = ProcessAndBuildStoragePath(input, true);
                 if (string.IsNullOrWhiteSpace(input.TargetPath)) {
                     result.Message = "Unable to generate the final storage path. Please check inputs.";
                     return result;
@@ -85,7 +85,7 @@ namespace Haley.Services {
         }
         public Task<IOSSFileStreamResponse> Download(IOSSRead input, bool auto_search_extension = true) {
             IOSSFileStreamResponse result = new FileStreamResponse() { Status = false, Stream = Stream.Null };
-            var path = ProcessAndBuildStoragePath(input, ensureFileRoute: true, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input,  true, readonlyMode: true).targetPath;
             if (string.IsNullOrWhiteSpace(path)) return Task.FromResult(result);
 
             if (!File.Exists(path) && auto_search_extension) {
@@ -126,7 +126,7 @@ namespace Haley.Services {
                 feedback.Message = "Application is in Read-Only mode.";
                 return feedback;
             }
-            var path = ProcessAndBuildStoragePath(input, ensureFileRoute: true, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, true, readonlyMode: true).targetPath;
 
             if (string.IsNullOrWhiteSpace(path)) {
                 feedback.Message = "Unable to generate path from provided inputs.";
@@ -144,7 +144,7 @@ namespace Haley.Services {
         }
         public IFeedback Exists(IOSSRead input, bool isFilePath = false) {
             var feedback = new Feedback() { Status = false };
-            var path = ProcessAndBuildStoragePath(input, ensureFileRoute: isFilePath, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, isFilePath, readonlyMode: true).targetPath;
             if (string.IsNullOrWhiteSpace(path)) {
                 feedback.Message = "Unable to generate path from provided inputs.";
                 return feedback;
@@ -159,14 +159,14 @@ namespace Haley.Services {
         }
 
         public long GetSize(IOSSRead input) {
-            var path = ProcessAndBuildStoragePath(input, ensureFileRoute: true, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, true, readonlyMode: true).targetPath;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return 0;
             return new FileInfo(path).Length;
         }
 
         public Task<IOSSDirResponse> GetDirectoryInfo(IOSSRead input) {
             IOSSDirResponse result = new OSSDirResponse() { Status = false };
-            var path = ProcessAndBuildStoragePath(input, ensureFileRoute: false, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, false, readonlyMode: true).targetPath;
             if (string.IsNullOrWhiteSpace(path)) {
                 result.Message = "Unable to generate path.";
                 return Task.FromResult(result);
@@ -195,7 +195,7 @@ namespace Haley.Services {
                     result.Message = "Application is in Read-Only mode.";
                     return result;
                 }
-                var path = ProcessAndBuildStoragePath(input, ensureFileRoute: false, readonlyMode: true).targetPath;
+                var path = ProcessAndBuildStoragePath(input, false, readonlyMode: true).targetPath;
 
                 if (string.IsNullOrWhiteSpace(path)) {
                     result.Message = $@"Unable to generate the path. Please check inputs.";
@@ -227,18 +227,20 @@ namespace Haley.Services {
                 feedback.Message = "Application is in Read-Only mode.";
                 return feedback;
             }
-            var path = ProcessAndBuildStoragePath(input, readonlyMode: true).targetPath;
+            var pathInfo = ProcessAndBuildStoragePath(input, false, readonlyMode: true);
+            var path = pathInfo.targetPath;
             if (string.IsNullOrWhiteSpace(path)) {
                 feedback.Message = "Unable to generate path from provided inputs.";
                 return feedback;
             }
             //How do we verfiy, if this the final target that we wish to delete?
             //We should not by mistake end up deleting a wrong directory.
-            var expectedToDelete = input.StorageRoutes?.Last().Path?.ToLower().Trim();
+            var expectedToDelete = input.Folder.Path?.Trim().ToLower();
 
             if (string.IsNullOrWhiteSpace(expectedToDelete) ||
                 (expectedToDelete == "\\" || expectedToDelete == "/") ||
-                expectedToDelete.Equals(BasePath.ToLower())) {
+                expectedToDelete.Equals(pathInfo.basePath.ToLower()) ||
+                 pathInfo.targetPath.Equals(pathInfo.basePath,StringComparison.InvariantCultureIgnoreCase)) {
                 feedback.Message = "Path is not valid for deleting.";
                 return feedback;
             }

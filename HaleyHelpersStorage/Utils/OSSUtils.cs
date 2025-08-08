@@ -129,13 +129,21 @@ namespace Haley.Utils
             return joined.CreateGUID(HashMethod.Sha256).ToString("N");
         }
 
-        public static string BuildStoragePath(this IOSSRead input, string basePath, bool allowRootAccess = false, bool readonlyMode = false) {
+        public static string BuildStoragePath(this IOSSRead input, string basePath, bool forFile, bool allowRootAccess = false, bool readonlyMode = false) {
+            //While building storage path, may be we are building only the 
             if (input == null || !(input is OSSReadRequest req)) throw new ArgumentNullException($@"{nameof(IOSSRead)} cannot be null. It has to be of type {nameof(OSSReadRequest)}");
 
             if (basePath.Contains("..")) throw new ArgumentOutOfRangeException("The base path contains invalid segments. Parent directory access is not allowed. Please fix");
             if (!Directory.Exists(basePath)) throw new DirectoryNotFoundException("Base directory not found. Please ensure it is present");
             if (string.IsNullOrWhiteSpace(req.TargetPath)) {
-                req.TargetPath = input.StorageRoutes?.BuildStoragePath(basePath, allowRootAccess, readonlyMode);
+                //Now we have two items to build. Directory path and file path. May be we are just building a directory here.
+                req.TargetPath = basePath;
+                if (input.Folder != null && !input.Folder.IsVirutal) {
+                    req.TargetPath = Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess,readonlyMode));
+                }
+                if (input.File != null && forFile) {
+                    req.TargetPath = Path.Combine(req.TargetPath, input.File.FetchRoutePath(req.TargetPath,true, allowRootAccess, readonlyMode));
+                }
             } else {
                 req.TargetPath = Path.Combine(basePath, req.TargetPath);
             }
@@ -155,48 +163,39 @@ namespace Haley.Utils
            return Path.Combine(paths.ToArray()); //Will it be in proper order??
         }
 
-        public static string BuildStoragePath(this IOSSRoute route, string basePath, bool allow_root_access, bool readonlyMode) {
-
+        static string FetchRoutePath(this IOSSRoute route, string basePath,bool finalDestination, bool allow_root_access, bool readonlyMode) {
+            //SEND ONLY THE PATH FROM THE ROUTE.. NOT THE FULL PATH INCLUDING THE BASE PATH.
+            //THE BASE PATH EXISTS HERE ONLY FOR TESTING PURPOSE.
             string path = basePath;  
             if (!Directory.Exists(path)) throw new ArgumentException("BasePath Directory doesn't exists.");
-
-            //Pull the lastone out.
-            if (route == null) return path; //Directly create inside the basepath (applicable in few cases);
-                                            //If one of the path is trying to make a root access, should we allow or deny?
-                                            //Route is expected to have one or more parents.
-                                            // So we loop through the routes and reach the last route without any parent and start building from there.
+             
+            if (route == null) return string.Empty; //Directly create inside the basepath (applicable in few cases);
+            //If one of the path is trying to make a root access, should we allow or deny?
+            //Route is expected to have one or more parents.
+            // So we loop through the routes and reach the last route without any parent and start building from there.
             string value = SanitizePath(route.Path);
+            if (finalDestination || !(route is IOSSFolderRoute fldrRoute) || fldrRoute.IsVirutal) return value; //If the route is for file or else the folder route is only for virtual situation then we just return as is.
 
-            if (string.IsNullOrWhiteSpace(value) || route.IsVirutal) {
-                if (allow_root_access) { 
-                //Proably this is just virtual and doesn't have a path.
-                }
-                
-                //We are trying a root access
-                throw new AccessViolationException("Root directory access is not allowed.");
-            }
+            if (string.IsNullOrWhiteSpace(value) && !allow_root_access) throw new AccessViolationException("Root directory access is not allowed."); //We should not access the root folder. It's like the path was kept deliberately empty so that the workspace location can be accessed.
 
-            path = Path.Combine(path, value);
-
-            if (route.IsFile) return path;
-
-            //1. a) Dir Creation disallowed b) Dir doesn't exists c) The route is not of type Client or Module. 
-            if (!Directory.Exists(path) && !route.CreatingMissingParent) {
+            path = Path.Combine(path, value); //Combing with the base path.
+            
+            //1. a) Dir Creation disallowed b) Dir doesn't exists 
+            if (!Directory.Exists(path) && !fldrRoute.CreateIfMissing) {
                 //Whether it is a file or a directory, if user doesn't have access to create it, throw exception.
                 //We cannot allow to create Client & Module paths.
                 string errMsg = $@"Directory doesn't exists : {route.Name ?? route.Path}";
-
                 //2.1 ) Are we in the middle, trying to ensure some directory exists?
-                if (isEndPart && !readonlyMode) errMsg = $@"Access denied to create/delete the directory :{route.Name ?? route.Path}";
+                if (!readonlyMode) errMsg = $@"Access denied to create/delete the directory :{route.Name ?? route.Path}";
                 throw new ArgumentException(errMsg);
             }
 
-            //3. Are we trying to create a directory as our main goal?
-            if (isEndPart) break;
+            //3. Are we trying to create a directory as our main goal?? If yes, then we should not try to create here.. It will be created outside of this .
+
             if (!(path?.TryCreateDirectory().Result ?? false)) throw new ArgumentException($@"Unable to create the directory : {route.Name ?? route.Path}");
 
             if (!path.StartsWith(basePath)) throw new ArgumentOutOfRangeException("The generated path is not accessible. Please check the inputs.");
-            return path;
+            return value; //Dont' return the full path as we will be joining this result with other base path outside this function.
         }
 
         public static bool TryPopulateControlledGUID(this string value, out Guid result, OSSParseMode pmode, Func<string, Guid> generator = null, bool throwExceptions = false) {
