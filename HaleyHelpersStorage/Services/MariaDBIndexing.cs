@@ -3,6 +3,7 @@ using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -45,7 +46,7 @@ namespace Haley.Utils {
         public Guid GUIDGenerator(IOSSRead request) {
             return UIDGeneratorInternal(request).Result.guid;
         }
-        async Task<(bool status, (long id, string cuid) result)> EnsureWorkSpace(IOSSRead request) {
+        async Task<(bool status, (long id, string uid) result)> EnsureWorkSpace(IOSSRead request) {
             if (!_cache.ContainsKey(request.Workspace.Cuid)) return (false, (0, string.Empty));
             var wspace = _cache[request.Workspace.Cuid];
             //Check if workspace exists in the database.
@@ -53,15 +54,28 @@ namespace Haley.Utils {
             if (wspace_exists == null) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.INSERT }, (ID, wspace.Id));
             wspace_exists = await _agw.Scalar(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.EXISTS }, (ID, wspace.Id));
             if (wspace_exists == null) throw new Exception($@"Unable to insert the workspace id {wspace.Id} into the database {request.Module.Cuid}");
-            return (true, (wspace.Id, request.Workspace.Cuid));
+            return (true, (wspace.Id,request.Module.Cuid));
+        }
+
+        async Task<(bool status, (long id, string uid) result)> EnsureDirectory(IOSSRead request, long ws_id) {
+            if (ws_id == 0) return (false, (0, string.Empty));
+            //If directory name is not provided, then go for "default" as usual
+            var dirParent = request.Folder?.Parent?.Id ?? 0;
+            var dirName = request.Folder?.Name ?? OSSInfo.DEFAULTNAME;
+            var dirDbName = dirName.ToDBName();
+            var dir_exists = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS }, (WSPACE, ws_id),(PARENT,dirParent),(NAME, dirDbName));
+            if (dir_exists == null) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.INSERT }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName),(DNAME,dirName));
+             dir_exists = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName));
+            if (dir_exists == null) throw new Exception($@"Unable to insert the directory {dirName} to the workspace : {ws_id} into the database {request.Module.Cuid}");
+            return (true, ((long)dir_exists, request.Module.Cuid));
         }
 
         async Task<(long id,Guid guid)> UIDGeneratorInternal(IOSSRead request) {
             try {
                 var result = (0, Guid.Empty);
-                var wspce = await EnsureWorkSpace(request);
-                if (!wspce.status) return result;
-
+                var ws = await EnsureWorkSpace(request);
+                if (!ws.status) return result;
+                var dir = await EnsureDirectory(request, ws.result.id);
 
 
                 return result;

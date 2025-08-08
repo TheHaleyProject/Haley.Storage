@@ -349,9 +349,9 @@ END]]></string>
 		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="57" y="361" />
 		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="247" />
 		<entity schema="dss_client" name="workspace" color="C1D8EE" x="418" y="266" />
-		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="361" />
 		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="380" />
 		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="190" />
+		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="361" />
 		<shape x="76" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>
