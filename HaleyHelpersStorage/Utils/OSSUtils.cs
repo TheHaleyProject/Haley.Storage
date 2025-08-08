@@ -228,7 +228,12 @@ namespace Haley.Utils
                 }
                 break;
             }
+
             result = guid;
+            if (result == Guid.Empty ) {
+                if (throwExceptions) throw new ArgumentNullException("The final generated guid is an empty value. Not acceptable. Please check the inputs.");
+                return false;
+            }
             return true;
         }
         public static bool TryPopulateControlledID(this string value, out long result, OSSParseMode pmode , Func<string,long> generator = null,bool throwExceptions = false) {

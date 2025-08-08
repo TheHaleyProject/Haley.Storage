@@ -29,6 +29,12 @@ namespace Haley.Models {
             return ValidateInternal(out message);
         }
 
+        //public IOSSInfo SetCUID(string uid) {
+        //    if (string.IsNullOrWhiteSpace(uid) || !uid.IsCompactGuid(out _)) return this;
+        //    Cuid = uid;
+        //    return this;
+        //}
+
         bool ValidateInternal(out string message) {
             message = string.Empty;
             if (string.IsNullOrWhiteSpace(DisplayName)) {
@@ -44,6 +50,16 @@ namespace Haley.Models {
 
         protected virtual void GenerateCuid() {
             Cuid = OSSUtils.GenerateCuid(DisplayName);
+        }
+
+        public virtual IOSSInfo UpdateCUID(params string[] parentNames) {
+            if (parentNames == null) return this;
+            var inputList = parentNames.ToList();
+            if (inputList.Count == 0 || inputList.Last().ToDBName() != Name) {
+                inputList.Add(Name); //I
+            }
+            Cuid = OSSUtils.GenerateCuid(inputList.ToArray());
+            return this;
         }
 
         public string Guid { get; private set; } //Sha256 generated from the name and a guid is created from there.

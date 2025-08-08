@@ -26,7 +26,7 @@ namespace Haley.Utils {
         const string DB_CORE_SEARCH_TERM = "dss_core";
         const string DB_CLIENT_SEARCH_TERM = "dss_client";
         const string DB_SQL_FILE_LOCATION = "Resources";
-        const string DB_MODULE_NAME_PREFIX = "dssm_";
+        public const string DB_MODULE_NAME_PREFIX = "dssm_";
         string _key;
         IAdapterGateway _agw;
         bool isValidated = false;
@@ -35,6 +35,15 @@ namespace Haley.Utils {
         }
 
         ConcurrentDictionary<string, IOSSDirectory> _idxAllDirectories = new ConcurrentDictionary<string, IOSSDirectory>();
+
+        public long IDGenerator(IOSSWorkspace wsInfo, string input) {
+            return 0;
+        }
+
+        public Guid GUIDGenerator(IOSSWorkspace wsInfo, string input) {
+            return Guid.Empty;
+        }
+
         public async Task<IFeedback> RegisterClient(IOSSClient info) {
             if (info == null) throw new ArgumentNullException("Input client directory info cannot be null");
             if (!info.TryValidate(out var msg)) throw new ArgumentException(msg);
@@ -196,7 +205,6 @@ namespace Haley.Utils {
                 _idxAllDirectories.TryAdd(info.Cuid, info);
             }
         }
-
         async Task CreateModuleDBInstance(IOSSDirectory dirInfo) {
             if (!(dirInfo is IOSSModule info)) return;
             if (string.IsNullOrWhiteSpace(info.DatabaseName)) info.DatabaseName = $@"{DB_MODULE_NAME_PREFIX}{info.Cuid}";
@@ -209,11 +217,16 @@ namespace Haley.Utils {
             //if the file exists, then run this file against the adapter gateway but ignore the db name.
             var content = File.ReadAllText(sqlFile);
             //We know that the file itself contains "dss_core" as the schema name. Replace that with new one.
-            content = content.Replace(DB_CLIENT_SEARCH_TERM, info.DatabaseName);
-            //?? Should we run everything in one go or run as separate statements ???
-            await _agw.NonQuery(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = content });
+            var exists = await _agw.Scalar(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = GENERAL.SCHEMA_EXISTS }, (NAME, info.DatabaseName));
+            if (exists == null || !exists.IsNumericType() || !double.TryParse(exists.ToString(),out var id) || id < 1) {
+                content = content.Replace(DB_CLIENT_SEARCH_TERM, info.DatabaseName);
+                //?? Should we run everything in one go or run as separate statements ???
+                var result = await _agw.NonQuery(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = content });
+            }
+            exists = await _agw.Scalar(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = GENERAL.SCHEMA_EXISTS }, (NAME, info.DatabaseName));
+            if (exists == null) throw new ArgumentException($@"Unable to generate the database {info.DatabaseName}");   
+            
         }
-
         public bool TryAddInfo(IOSSDirectory dirInfo, bool replace = false) {
             if (dirInfo == null || !dirInfo.Name.AssertValue(false) || !dirInfo.Cuid.AssertValue(false)) return false;
             if (_idxAllDirectories.ContainsKey(dirInfo.Cuid)) {
@@ -232,7 +245,6 @@ namespace Haley.Utils {
             component = (T)data;
             return true;
         }
-        
         public MariaDBIndexing(IAdapterGateway agw, string key) {
             _key = key;
             _agw = agw;

@@ -29,6 +29,9 @@ namespace Haley.Internal {
     }
 
     internal class IndexingQueries {
+        public class GENERAL {
+            public const string SCHEMA_EXISTS = $@"select 1 from information_schema.schemata where schema_name = {NAME};";
+        }
         public class CLIENT {
             public const string EXISTS = $@"select c.id from client as c where c.name = {NAME} LIMIT 1;";
             public const string UPSERTKEYS = $@"insert into client_keys (client,signing,encrypt,password) values ({ID},{SIGNKEY},{ENCRYPTKEY},{PASSWORD}) ON DUPLICATE KEY UPDATE signing =  VALUES(signing), encrypt = VALUES(encrypt), password = VALUES(password);";

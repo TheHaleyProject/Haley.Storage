@@ -13,14 +13,8 @@ namespace Haley.Models {
         public bool IsVirtual { get; set; }
         public OSSControlMode ControlMode { get; set; } //Parsing or create mode is defined at application level?
         public OSSParseMode ParseMode { get; set; } //If false, we fall back to parsing.
-        public virtual IOSSControlled UpdateCUID(params string[] parentNames) {
-            if (parentNames == null) return this;
-            var inputList = parentNames.ToList() ;
-            if (inputList.Count == 0 || inputList.Last().ToDBName() != Name) {
-                inputList.Add(Name); //I
-            }
-            Cuid = OSSUtils.GenerateCuid(inputList.ToArray());
-            return this;
+        public override IOSSControlled UpdateCUID(params string[] parentNames) {
+            return (IOSSControlled)base.UpdateCUID(parentNames);
         }
         public OSSControlled(string displayname, OSSControlMode control = OSSControlMode.None, OSSParseMode parse = OSSParseMode.Parse, bool isVirtual = false) : base(displayname) {
             ControlMode = control;

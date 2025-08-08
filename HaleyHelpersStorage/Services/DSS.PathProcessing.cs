@@ -100,7 +100,7 @@ namespace Haley.Services {
             if (isNumber) return (Config.SplitLengthNumber, Config.DepthNumber);
             return (Config.SplitLengthHash, Config.DepthHash);
         }
-        public void EnsureStorageRoutes(IOSSRead input) {
+        public void ProcessFileRoute(IOSSRead input) {
             //The last storage route should be in the format of a file
             if (input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {
                 //We are trying to upload a file but the last storage route is not in the format of a file.
@@ -125,7 +125,14 @@ namespace Haley.Services {
                 if (Indexer.TryGetComponentInfo<OSSWorkspace>(OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace), out OSSWorkspace wInfo)) {
                     //TODO: USE THE INDEXER TO GET THE PATH FOR THIS SPECIFIC FILE WITH MODULE AND CLIENT NAME.
                     //TODO: IF THE PATH IS OBTAINED, THEN JUST JOIN THE PATHS.
-                    targetFilePath = OSSUtils.GenerateFileSystemSavePath(new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse,isVirtual:false), splitProvider: SplitProvider, suffix: Config.SuffixFile, throwExceptions: true).path;
+                    targetFilePath = OSSUtils.GenerateFileSystemSavePath(
+                        new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse,isVirtual:false),
+                        idGenerator: (s) => { return Indexer?.IDGenerator(wInfo, s) ?? 0; },
+                        guidGenerator: (s) => { return Indexer?.GUIDGenerator(wInfo, s) ?? Guid.Empty; },
+                        splitProvider: SplitProvider, 
+                        suffix: Config.SuffixFile, 
+                        throwExceptions: true)
+                        .path;
                 } else {
                     targetFilePath = targetFileName.ToDBName(); //Just lower it 
                 }
@@ -134,9 +141,10 @@ namespace Haley.Services {
                 input.File.Path = targetFilePath;
             }
         }
+
         public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool for_file , bool allowRootAccess = false, bool readonlyMode = false) {
             var bpath = FetchBasePath(input);
-            if (for_file) EnsureStorageRoutes(input);
+            if (for_file) ProcessFileRoute(input);
             var path = input?.BuildStoragePath(bpath,for_file, allowRootAccess, readonlyMode); //This will also ensure we are not trying to delete something 
             return (bpath, path);
         }

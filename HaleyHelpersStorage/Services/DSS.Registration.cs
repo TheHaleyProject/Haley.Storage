@@ -86,6 +86,7 @@ namespace Haley.Services {
             var idxResult = await Indexer.RegisterModule(moduleInfo);
             result.Result = idxResult.Result;
 
+            //if (!string.IsNullOrWhiteSpace(moduleInfo.DatabaseName)) module.SetCUID(moduleInfo.DatabaseName);
             await RegisterWorkSpace(new OSSControlled(null, OSSControlMode.Guid, OSSParseMode.Generate), client, module);
             return result;
         }
@@ -94,6 +95,7 @@ namespace Haley.Services {
             if (!wspace.TryValidate(out msg)) throw new Exception(msg);
             if (!client.TryValidate(out msg)) throw new Exception(msg);
             if (!module.TryValidate(out msg)) throw new Exception(msg);
+            module.UpdateCUID(client.Name,module.Name);
 
             var cliPath = GenerateBasePath(client, OSSComponent.Client).path;
             var modPath = GenerateBasePath(module, OSSComponent.Module).path;

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS `client_keys` (
 
 -- Data exporting was unselected.
 
+DROP PROCEDURE IF EXISTS `DropDatabasesWithPrefix`;
 -- Dumping structure for procedure dss_core.DropDatabasesWithPrefix
 DELIMITER //
 CREATE PROCEDURE `DropDatabasesWithPrefix`(IN prefix VARCHAR(100))

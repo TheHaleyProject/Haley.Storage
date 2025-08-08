@@ -20,7 +20,7 @@ namespace Haley.Models {
         public OSSWorkspace(string clientName, string moduleName, string displayName, bool is_virtual = false):base(displayName) {
             IsVirtual = is_virtual;
             Client = new OSSInfo(clientName) {  };
-            Module = new OSSInfo(moduleName) {  };
+            Module = new OSSInfo(moduleName).UpdateCUID(clientName,moduleName);
             UpdateCUID(Client.Name, Module.Name, Name); //With all other names
         }
     }
