@@ -36,14 +36,17 @@ namespace Haley.Utils {
 
         ConcurrentDictionary<string, IOSSDirectory> _idxAllDirectories = new ConcurrentDictionary<string, IOSSDirectory>();
 
-        public long IDGenerator(IOSSWorkspace wsInfo, string input) {
-            return 0;
+        public long IDGenerator(IOSSRead request) {
+            return UIDGeneratorInternal(request).Result.id;
         }
 
-        public Guid GUIDGenerator(IOSSWorkspace wsInfo, string input) {
-            return Guid.Empty;
+        public Guid GUIDGenerator(IOSSRead request) {
+            return UIDGeneratorInternal(request).Result.guid;
         }
 
+        async Task<(long id,Guid guid)> UIDGeneratorInternal(IOSSRead request) {
+            return (0,Guid.Empty);
+        }
         public async Task<IFeedback> RegisterClient(IOSSClient info) {
             if (info == null) throw new ArgumentNullException("Input client directory info cannot be null");
             if (!info.TryValidate(out var msg)) throw new ArgumentException(msg);
@@ -224,7 +227,9 @@ namespace Haley.Utils {
                 var result = await _agw.NonQuery(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = content });
             }
             exists = await _agw.Scalar(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = GENERAL.SCHEMA_EXISTS }, (NAME, info.DatabaseName));
-            if (exists == null) throw new ArgumentException($@"Unable to generate the database {info.DatabaseName}");   
+            if (exists == null) throw new ArgumentException($@"Unable to generate the database {info.DatabaseName}");
+            //We create an adapter with this Cuid and store them.
+            _agw.DuplicateAdapter(_key, info.Cuid, ("database",info.DatabaseName));
             
         }
         public bool TryAddInfo(IOSSDirectory dirInfo, bool replace = false) {

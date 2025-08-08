@@ -32,7 +32,7 @@ namespace Haley.Utils
             return input;
         }
 
-        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<string,long> idGenerator = null, Func<string,Guid> guidGenerator = null,bool throwExceptions = false) {
+        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<long> idGenerator = null, Func<Guid> guidGenerator = null,bool throwExceptions = false) {
             if (nObj == null || !nObj.TryValidate(out _)) return (string.Empty, string.Empty);
             string result = string.Empty;
             long objId = 0;
@@ -46,12 +46,12 @@ namespace Haley.Utils
                     nObj.SaveAsName = nObj.Name;
                 break;
                 case OSSControlMode.Number:
-                if (nObj.Name.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode,generator: idGenerator, throwExceptions)) {
+                if (nObj.DisplayName.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode,generator: idGenerator, throwExceptions)) {
                     nObj.SaveAsName = objId.ToString();
                 }
                 break;
                 case OSSControlMode.Guid:
-                 if (nObj.Name.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,generator:guidGenerator, throwExceptions)) {
+                 if (nObj.DisplayName.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,generator:guidGenerator, throwExceptions)) {
                     nObj.SaveAsName = objGuid.ToString("N");
                 }
                 break;
@@ -62,10 +62,10 @@ namespace Haley.Utils
                     nObj.SaveAsName = objId.ToString();
                 } else if(nObj.Name.TryPopulateControlledGUID(out objGuid, OSSParseMode.Parse,null, false)){
                     nObj.SaveAsName = objGuid.ToString("N");
-                } else if (nObj.Name.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode, idGenerator, false)) {
+                } else if (nObj.DisplayName.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode, idGenerator, false)) {
                     //Try with original parsing mode, ,may be we are asked to generte. We dont' know;
                     nObj.SaveAsName = objId.ToString();
-                } else if (nObj.Name.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,guidGenerator, throwExceptions)) {
+                } else if (nObj.DisplayName.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,guidGenerator, throwExceptions)) {
                     nObj.SaveAsName = objGuid.ToString("N");
                 }
                 break;
@@ -198,7 +198,7 @@ namespace Haley.Utils
             return value; //Dont' return the full path as we will be joining this result with other base path outside this function.
         }
 
-        public static bool TryPopulateControlledGUID(this string value, out Guid result, OSSParseMode pmode, Func<string, Guid> generator = null, bool throwExceptions = false) {
+        public static bool TryPopulateControlledGUID(this string value, out Guid result, OSSParseMode pmode, Func<Guid> generator = null, bool throwExceptions = false) {
             result = Guid.Empty;
             //Check if the value is already in the format of a hash.
             //This method is not responsible for removing the Hyphens, if found.
@@ -222,7 +222,7 @@ namespace Haley.Utils
                 case OSSParseMode.Generate:
                 //Regardless of what is provided, we generate the hash based GUID.
                 if (generator != null) {
-                    guid = generator.Invoke(workingValue.ToDBName());
+                    guid = generator.Invoke(); //We need with the extension so that we can check it properly in the system.
                 } else {
                     guid = workingValue.ToDBName().CreateGUID(HashMethod.Sha256);
                 }
@@ -236,7 +236,7 @@ namespace Haley.Utils
             }
             return true;
         }
-        public static bool TryPopulateControlledID(this string value, out long result, OSSParseMode pmode , Func<string,long> generator = null,bool throwExceptions = false) {
+        public static bool TryPopulateControlledID(this string value, out long result, OSSParseMode pmode , Func<long> generator = null,bool throwExceptions = false) {
             result = 0;
             if (string.IsNullOrWhiteSpace(value)) {
                 if (throwExceptions) throw new ArgumentNullException("Unable to generate the ID. The provided input is null or empty.");
@@ -257,7 +257,7 @@ namespace Haley.Utils
                     return false;
                 }
                 
-                result = generator.Invoke(workingValue);
+                result = generator.Invoke();
                 break;
             }
             if (result < 1) {

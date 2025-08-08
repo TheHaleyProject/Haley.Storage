@@ -127,8 +127,8 @@ namespace Haley.Services {
                     //TODO: IF THE PATH IS OBTAINED, THEN JUST JOIN THE PATHS.
                     targetFilePath = OSSUtils.GenerateFileSystemSavePath(
                         new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse,isVirtual:false),
-                        idGenerator: (s) => { return Indexer?.IDGenerator(wInfo, s) ?? 0; },
-                        guidGenerator: (s) => { return Indexer?.GUIDGenerator(wInfo, s) ?? Guid.Empty; },
+                        idGenerator: () => { return Indexer?.IDGenerator(input) ?? 0; },
+                        guidGenerator: () => { return Indexer?.GUIDGenerator(input) ?? Guid.Empty; },
                         splitProvider: SplitProvider, 
                         suffix: Config.SuffixFile, 
                         throwExceptions: true)
