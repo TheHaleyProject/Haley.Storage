@@ -54,8 +54,15 @@
 			<index name="pk_file_info_0" unique="PRIMARY_KEY" >
 				<column name="file" />
 			</index>
+			<index name="idx_doc_info" unique="NORMAL" >
+				<column name="extension" />
+				<column name="saveas_name" />
+			</index>
 			<fk name="fk_file_info_file_index_0" to_schema="dss_client" to_table="document" >
 				<fk_column name="file" pk="id" />
+			</fk>
+			<fk name="fk_doc_info_extension" to_schema="dss_client" to_table="extension" >
+				<fk_column name="extension" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -333,13 +340,13 @@ END]]></string>
 		</procedure>
 	</schema>
 	<layout name="mssclient" id="3ffb53d2-b523-405c-b56e-4864481bd7c9" joined_routing="y" show_relation="cascade" >
-		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="266" y="171" />
-		<entity schema="dss_client" name="extension" color="C1D8EE" x="114" y="209" />
+		<entity schema="dss_client" name="extension" color="C1D8EE" x="76" y="190" />
 		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="57" y="323" />
-		<entity schema="dss_client" name="document" color="C1D8EE" x="266" y="342" />
-		<entity schema="dss_client" name="workspace" color="C1D8EE" x="437" y="228" />
-		<entity schema="dss_client" name="directory" color="C1D8EE" x="456" y="323" />
-		<shape x="95" y="57" style="Rectangle" color="FF0000" >
+		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="342" />
+		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="171" />
+		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="323" />
+		<entity schema="dss_client" name="workspace" color="C1D8EE" x="418" y="228" />
+		<shape x="76" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>
 		</shape>

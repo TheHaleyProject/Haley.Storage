@@ -27,7 +27,7 @@ namespace Haley.Services {
                 suffix = Config.SuffixFile;
                 throw new NotImplementedException("No method implemented for handling BasePath generation for File Component type.");
             }
-            return OSSUtils.GenerateFileSystemSavePath(input, OSSParseMode.ParseOrGenerate, (n) => { return (length, depth); }, suffix: suffix, throwExceptions: false);
+            return OSSUtils.GenerateFileSystemSavePath(input, OSSParseMode.Generate, (n) => { return (length, depth); }, suffix: suffix, throwExceptions: false);
         }
         public string GetStorageRoot() {
             return BasePath;

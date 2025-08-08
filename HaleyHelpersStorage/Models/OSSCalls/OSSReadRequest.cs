@@ -38,7 +38,7 @@ namespace Haley.Models {
         public  OSSReadRequest(string client_name, string module_name, string workspace_name, bool isWsVirtual = false) {
             Client = new OSSControlled(client_name);
             Module = new OSSControlled(module_name).UpdateCUID(Client.DisplayName);
-            Workspace = new OSSControlled(workspace_name,OSSControlMode.Both,OSSParseMode.ParseOrGenerate,isVirtual:isWsVirtual).UpdateCUID(Client.DisplayName,Module.DisplayName);
+            Workspace = new OSSControlled(workspace_name,OSSControlMode.Both,OSSParseMode.Generate,isVirtual:isWsVirtual).UpdateCUID(Client.DisplayName,Module.DisplayName);
         }
     }
 }

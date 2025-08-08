@@ -4,6 +4,8 @@ using Haley.Models;
 using Haley.Utils;
 
 namespace Haley.Services {
+
+    //We can store the version either as separate files or as individual versions. Its totally upto us.
     public partial class DiskStorageService : IDiskStorageService {
         public async Task<IOSSResponse> Upload(IOSSWrite input) {
             OSSResponse result = new OSSResponse() {
@@ -157,6 +159,7 @@ namespace Haley.Services {
             if (!feedback.Status) feedback.Message = $@"Does not exists {path}";
             return feedback;
         }
+
 
         public long GetSize(IOSSRead input) {
             var path = ProcessAndBuildStoragePath(input, true, readonlyMode: true).targetPath;

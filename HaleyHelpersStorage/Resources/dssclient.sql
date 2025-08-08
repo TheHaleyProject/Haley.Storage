@@ -28,11 +28,11 @@ CREATE TABLE IF NOT EXISTS `directory` (
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `workspace` bigint(20) NOT NULL,
-  `guid` varchar(48) NOT NULL DEFAULT 'uuid()',
+  `cuid` varchar(48) NOT NULL DEFAULT 'uuid()',
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT 'soft delete',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_directory` (`workspace`,`parent`,`name`),
-  UNIQUE KEY `unq_directory_0` (`guid`),
+  UNIQUE KEY `unq_directory_0` (`cuid`),
   CONSTRAINT `fk_directory_workspace` FOREIGN KEY (`workspace`) REFERENCES `workspace` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS `doc_info` (
   `valid` int(11) DEFAULT NULL,
   `saveas_name` varchar(200) NOT NULL,
   PRIMARY KEY (`file`),
+  KEY `idx_doc_info` (`extension`,`saveas_name`),
+  CONSTRAINT `fk_doc_info_extension` FOREIGN KEY (`extension`) REFERENCES `extension` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_file_info_file_index_0` FOREIGN KEY (`file`) REFERENCES `document` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
@@ -80,7 +82,9 @@ CREATE TABLE IF NOT EXISTS `doc_version` (
   `size` bigint(20) NOT NULL COMMENT 'in bytes',
   `version` int(11) NOT NULL DEFAULT 1,
   `doc` bigint(20) NOT NULL,
+  `cuid` varchar(48) NOT NULL DEFAULT 'uuid()',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `unq_doc_version` (`cuid`),
   KEY `idx_file_version` (`doc`,`version`),
   KEY `idx_file_version_0` (`created`),
   CONSTRAINT `fk_file_version_file_index` FOREIGN KEY (`doc`) REFERENCES `document` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION

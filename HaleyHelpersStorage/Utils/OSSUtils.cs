@@ -210,20 +210,12 @@ namespace Haley.Utils
             string workingValue = Path.GetFileNameWithoutExtension(value); //WITHOUT EXTENSION, ONLY FILE NAME
             switch (pmode) {
                 case OSSParseMode.Parse:
-                case OSSParseMode.ParseOrGenerate:
                     //Parse Mode : //Check if currently, the value is hashed or not.
                     
                     if (workingValue.IsValidGuid(out guid)) { //Parse
                     } else if (workingValue.IsCompactGuid(out guid)) { //Parse
-                    } else if (pmode == OSSParseMode.ParseOrGenerate) {
-                    //For generate, first preference if generator is available.
-                    if(generator != null) {
-                        guid = generator.Invoke(workingValue.ToDBName());
                     } else {
-                        guid = workingValue.ToDBName().CreateGUID(HashMethod.Sha256);
-                    }
-                    } else {
-                        if (throwExceptions) throw new ArgumentNullException("Unable to generate the GUID. Please check the input.");
+                        if (throwExceptions) throw new ArgumentNullException("Unable to parse the GUID from the given input. Please check the input.");
                         return false;
                     }
                 break;
@@ -248,17 +240,10 @@ namespace Haley.Utils
             string workingValue = Path.GetFileNameWithoutExtension(value); //WITHOUT EXTENSION, ONLY FILE NAME
             switch (pmode) {
                 case OSSParseMode.Parse:
-                case OSSParseMode.ParseOrGenerate:
                     //For parse mode, we first try to parse.
                 if (!long.TryParse(workingValue, out result)) {
-                    //if it fails to parse, then check if we are allowed to generate.
-                    //For parse mode also, we return false, For ParseOrGenerate if the generator is null, we return as well.
-
-                    if (pmode == OSSParseMode.Parse || generator == null) {
-                        if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Generator status : {generator != null}");
-                        return false;
-                    }
-                    result = generator.Invoke(workingValue);
+                    if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Generator status : {generator != null}");
+                    return false;
                 }
                 break;
                 case OSSParseMode.Generate:

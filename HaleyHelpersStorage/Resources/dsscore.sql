@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS `workspace` (
   `display_name` varchar(120) NOT NULL,
   `path` varchar(200) NOT NULL,
   `active` bit(1) NOT NULL DEFAULT b'1',
-  `control_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0 - none\n1 - numbers\n2 - hash\n3 - both',
+  `control_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0 - none\n1 - numbers\n2 - hash\n3 - both\n\nFor unmanaged versions, the',
   `parse_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0- Parse\n1- Generate\n2- Parse or generate',
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
