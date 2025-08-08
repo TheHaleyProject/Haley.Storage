@@ -70,6 +70,9 @@
 			<column name="id" type="BIGINT" mandatory="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
+			<column name="cuid" type="VARCHAR" length="48" mandatory="y" >
+				<defo><![CDATA['uuid()']]></defo>
+			</column>
 			<column name="created" prior="created_at" type="TIMESTAMP" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
 			</column>
@@ -79,19 +82,22 @@
 			<column name="version" type="INT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
 			</column>
-			<column name="doc" prior="file" type="BIGINT" mandatory="y" />
+			<column name="parent" prior="doc" type="BIGINT" mandatory="y" />
 			<index name="pk_file_version" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
 			<index name="idx_file_version" unique="NORMAL" >
-				<column name="doc" />
+				<column name="parent" />
 				<column name="version" />
 			</index>
 			<index name="idx_file_version_0" unique="NORMAL" >
 				<column name="created" />
 			</index>
+			<index name="unq_doc_version" unique="UNIQUE_KEY" >
+				<column name="cuid" />
+			</index>
 			<fk name="fk_file_version_file_index" to_schema="dss_client" to_table="document" >
-				<fk_column name="doc" pk="id" />
+				<fk_column name="parent" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -100,7 +106,7 @@
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
 			<column name="workspace" prior="parent" type="BIGINT" mandatory="y" />
-			<column name="dir" type="BIGINT" mandatory="y" />
+			<column name="parent" prior="dir" type="BIGINT" mandatory="y" />
 			<column name="name" prior="saveas_name" type="VARCHAR" length="200" mandatory="y" />
 			<column name="cuid" prior="guid" type="VARCHAR" length="48" mandatory="y" >
 				<defo><![CDATA['uuid()']]></defo>
@@ -126,19 +132,18 @@
 			<index name="fk_file_index_parent" unique="NORMAL" >
 				<column name="workspace" />
 			</index>
-			<index name="unq_document" unique="UNIQUE_KEY" >
-				<column name="workspace" />
-				<column name="dir" />
-				<column name="name" />
-			</index>
 			<index name="fk_document_directory" unique="NORMAL" >
-				<column name="dir" />
+				<column name="parent" />
+			</index>
+			<index name="unq_document" unique="UNIQUE_KEY" >
+				<column name="parent" />
+				<column name="name" />
 			</index>
 			<fk name="fk_document_workspace" to_schema="dss_client" to_table="workspace" >
 				<fk_column name="workspace" pk="id" />
 			</fk>
 			<fk name="fk_document_directory" to_schema="dss_client" to_table="directory" >
-				<fk_column name="dir" pk="id" />
+				<fk_column name="parent" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -269,13 +274,14 @@ We would have anyhow created the guid based on the provided name. If the client 
 				<comment><![CDATA[0 - none
 1 - numbers
 2 - hash
-3 - both]]></comment>
+3 - both
+
+For unmanaged versions, the]]></comment>
 			</column>
 			<column name="parse_mode" type="INT" mandatory="y" >
 				<defo><![CDATA[0]]></defo>
-				<comment><![CDATA[0- Parse
-1- Generate
-2- Parse or generate]]></comment>
+				<comment><![CDATA[0- Parse //Either you send it.
+1- Generate //Or I generate it.]]></comment>
 			</column>
 			<column name="created" type="TIMESTAMP" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
@@ -340,12 +346,12 @@ END]]></string>
 		</procedure>
 	</schema>
 	<layout name="mssclient" id="3ffb53d2-b523-405c-b56e-4864481bd7c9" joined_routing="y" show_relation="cascade" >
-		<entity schema="dss_client" name="extension" color="C1D8EE" x="76" y="190" />
-		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="57" y="323" />
-		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="342" />
-		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="171" />
-		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="323" />
-		<entity schema="dss_client" name="workspace" color="C1D8EE" x="418" y="228" />
+		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="57" y="361" />
+		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="247" />
+		<entity schema="dss_client" name="workspace" color="C1D8EE" x="418" y="266" />
+		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="361" />
+		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="380" />
+		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="190" />
 		<shape x="76" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>

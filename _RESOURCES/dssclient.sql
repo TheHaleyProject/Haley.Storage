@@ -46,14 +46,14 @@ CREATE TABLE IF NOT EXISTS `document` (
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp(),
   `name` varchar(200) NOT NULL,
-  `dir` bigint(20) NOT NULL,
+  `parent` bigint(20) NOT NULL,
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT 'Soft delete',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_file_index` (`cuid`),
-  UNIQUE KEY `unq_document` (`workspace`,`dir`,`name`),
+  UNIQUE KEY `unq_document` (`parent`,`name`),
   KEY `fk_file_index_parent` (`workspace`),
-  KEY `fk_document_directory` (`dir`),
-  CONSTRAINT `fk_document_directory` FOREIGN KEY (`dir`) REFERENCES `directory` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  KEY `fk_document_directory` (`parent`),
+  CONSTRAINT `fk_document_directory` FOREIGN KEY (`parent`) REFERENCES `directory` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_document_workspace` FOREIGN KEY (`workspace`) REFERENCES `workspace` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
@@ -81,13 +81,13 @@ CREATE TABLE IF NOT EXISTS `doc_version` (
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `size` bigint(20) NOT NULL COMMENT 'in bytes',
   `version` int(11) NOT NULL DEFAULT 1,
-  `doc` bigint(20) NOT NULL,
+  `parent` bigint(20) NOT NULL,
   `cuid` varchar(48) NOT NULL DEFAULT 'uuid()',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_doc_version` (`cuid`),
-  KEY `idx_file_version` (`doc`,`version`),
+  KEY `idx_file_version` (`parent`,`version`),
   KEY `idx_file_version_0` (`created`),
-  CONSTRAINT `fk_file_version_file_index` FOREIGN KEY (`doc`) REFERENCES `document` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  CONSTRAINT `fk_file_version_file_index` FOREIGN KEY (`parent`) REFERENCES `document` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.

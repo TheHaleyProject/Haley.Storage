@@ -11,6 +11,7 @@ namespace Haley.Internal {
         public const string VAULT_DEFCLIENT = "admin";
         public const string NAME = $@"@{nameof(NAME)}";
         public const string DNAME = $@"@{nameof(DNAME)}";
+        public const string SAVENAME = $@"@{nameof(SAVENAME)}";
         public const string GUID = $@"@{nameof(GUID)}";
         public const string CUID = $@"@{nameof(CUID)}";
         public const string PATH = $@"@{nameof(PATH)}";
@@ -26,6 +27,8 @@ namespace Haley.Internal {
         public const string PARENT = $@"@{nameof(PARENT)}";
         public const string CONTROLMODE = $@"@{nameof(CONTROLMODE)}";
         public const string PARSEMODE = $@"@{nameof(PARSEMODE)}";
+        public const string WSPACE = $@"@{nameof(WSPACE)}";
+        public const string EXT = $@"@{nameof(EXT)}";
     }
 
     internal class IndexingQueries {
@@ -51,6 +54,37 @@ namespace Haley.Internal {
             public const string EXISTS_BY_CUID = $@"select ws.id from workspace as ws where ws.cuid = {CUID} LIMIT 1;";
             public const string UPSERT = $@"insert into workspace (parent,name, display_name,guid,path,cuid,control_mode,parse_mode) values ({PARENT}, {NAME},{DNAME},{GUID},{PATH},{CUID},{CONTROLMODE},{PARSEMODE}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),control_mode=VALUES(control_mode),parse_mode=VALUES(parse_mode);";
             public const string UPDATE = $@"update workspace set display_name = {DNAME}, path = {PATH},control_mode={CONTROLMODE},parse_mode={PARSEMODE} where id = {ID};";
+        }
+
+        public class INSTANCE {
+           public class WORKSPACE {
+                public const string EXISTS = $@"select 1 from workspace as w where w.id = {ID};";
+                public const string INSERT = $@"insert IGNORE into workspace (id) values ({ID});";
+           }
+
+            public class DIRECTORY {
+                public const string EXISTS = $@"select dir.id, dir.cuid from directory as dir where dir.workspace = {WSPACE} and dir.parent = {PARENT} and dir.name = {NAME};";
+                public const string EXISTS_BY_CUID = $@"select dir.id from directory as dir where dir.cuid = {CUID};";
+                public const string INSERT = $@"insert ignore into directory (workspace,parent,name,display_name) values ({WSPACE},{PARENT},{NAME},{DNAME});";
+            }
+
+            public class DOCUMENT {
+                public const string EXISTS = $@"select doc.id , doc.cuid from document as doc where doc.parent = {PARENT} and doc.name = {NAME};";
+                public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid from document as doc where doc.cuid = {CUID};";
+                public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
+                public const string INSERT_INFO = $@"insert into doc_info (file,extension,display_name,saveas_name,path) values ({PARENT}, {EXT},{DNAME},{SAVENAME},{PATH}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),saveas_name = VALUES(saveas_name);";
+            }
+            public class EXTENSION {
+                public const string EXISTS = $@"select ext.id from extension as ext where ext.name = {NAME};";
+                public const string INSERT = $@"insert ignore into extension (name) values ({NAME});";
+            }
+
+            //public class DOCVERSION {
+            //    public const string EXISTS = $@"select dv.id , dv.cuid from doc_version as dv where doc.parent = {PARENT} and doc.name = {NAME};";
+            //    public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid from document as doc where doc.cuid = {CUID};";
+            //    public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
+            //    public const string INSERT_INFO = $@"insert into doc_info (file,extension,display_name,saveas_name,path) values ({PARENT}, {EXT},{DNAME},{SAVENAME},{PATH}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),saveas_name = VALUES(saveas_name);";
+            //}
         }
     }
 }

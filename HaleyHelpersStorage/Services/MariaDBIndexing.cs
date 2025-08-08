@@ -2,6 +2,7 @@
 using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -27,6 +28,7 @@ namespace Haley.Utils {
         const string DB_CLIENT_SEARCH_TERM = "dss_client";
         const string DB_SQL_FILE_LOCATION = "Resources";
         public const string DB_MODULE_NAME_PREFIX = "dssm_";
+        ILogger _logger;
         string _key;
         IAdapterGateway _agw;
         bool isValidated = false;
@@ -34,8 +36,8 @@ namespace Haley.Utils {
             if (!isValidated) await Validate();
         }
 
-        ConcurrentDictionary<string, IOSSDirectory> _idxAllDirectories = new ConcurrentDictionary<string, IOSSDirectory>();
-
+        ConcurrentDictionary<string, IOSSDirectory> _cache = new ConcurrentDictionary<string, IOSSDirectory>();
+        public bool ThrowExceptions { get; set; }
         public long IDGenerator(IOSSRead request) {
             return UIDGeneratorInternal(request).Result.id;
         }
@@ -43,9 +45,31 @@ namespace Haley.Utils {
         public Guid GUIDGenerator(IOSSRead request) {
             return UIDGeneratorInternal(request).Result.guid;
         }
+        async Task<(bool status, (long id, string cuid) result)> EnsureWorkSpace(IOSSRead request) {
+            if (!_cache.ContainsKey(request.Workspace.Cuid)) return (false, (0, string.Empty));
+            var wspace = _cache[request.Workspace.Cuid];
+            //Check if workspace exists in the database.
+            var wspace_exists = await _agw.Scalar(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.EXISTS }, (ID, wspace.Id));
+            if (wspace_exists == null) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.INSERT }, (ID, wspace.Id));
+            wspace_exists = await _agw.Scalar(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.EXISTS }, (ID, wspace.Id));
+            if (wspace_exists == null) throw new Exception($@"Unable to insert the workspace id {wspace.Id} into the database {request.Module.Cuid}");
+            return (true, (wspace.Id, request.Workspace.Cuid));
+        }
 
         async Task<(long id,Guid guid)> UIDGeneratorInternal(IOSSRead request) {
-            return (0,Guid.Empty);
+            try {
+                var result = (0, Guid.Empty);
+                var wspce = await EnsureWorkSpace(request);
+                if (!wspce.status) return result;
+
+
+
+                return result;
+            } catch (Exception ex) {
+                _logger?.LogError(ex.Message);
+                if (ThrowExceptions) throw ex;
+                return (0, Guid.Empty);
+            }
         }
         public async Task<IFeedback> RegisterClient(IOSSClient info) {
             if (info == null) throw new ArgumentNullException("Input client directory info cannot be null");
@@ -77,14 +101,7 @@ namespace Haley.Utils {
                     }
                 }
             }
-
-            if (exists != null && exists.IsNumericType()) {
-                //Every time a client is sucessfully done. We validate if it is present or not.
-                await AddComponentCache(info);
-                long.TryParse(exists.ToString(), out var id);
-                return new Feedback(true) { Result = id};
-            }
-            return new Feedback(false, "Unable to index the client");
+            return await ValidateAndCache(CLIENT.EXISTS, "Client", info, null, (NAME, info.Name));
         }
         public async Task<IFeedback> RegisterModule(IOSSModule info) {
             if (info == null) throw new ArgumentNullException("Input Module directory info cannot be null");
@@ -105,17 +122,7 @@ namespace Haley.Utils {
                 if (cexists == null || !(cexists is int clientId)) throw new ArgumentException($@"Client {info.Client.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
                 await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPSERT }, (PARENT, clientId), (NAME, info.Name), (DNAME, info.DisplayName), (GUID, info.Guid), (PATH, info.Path), (CUID, info.Cuid));
             }
-
-            exists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS_BY_CUID }, (CUID, info.Cuid));
-
-            if (exists != null && exists.IsNumericType()) {
-                //Every time a client is sucessfully done. We validate if it is present or not.
-                await AddComponentCache(info,CreateModuleDBInstance);
-                long.TryParse(exists.ToString(), out var id);
-                return new Feedback(true, "Module Indexed.") { Result = id };
-            }
-
-            return new Feedback(false, "Unable to index the module");
+            return await ValidateAndCache(MODULE.EXISTS_BY_CUID, "Module", info, CreateModuleDBInstance, (CUID, info.Cuid));
         }
         public async Task<IFeedback> RegisterWorkspace(IOSSWorkspace info) {
             if (info == null) throw new ArgumentNullException("Input Module directory info cannot be null");
@@ -133,17 +140,19 @@ namespace Haley.Utils {
                 if (mexists == null || !(mexists is int modId)) throw new ArgumentException($@"Module {info.Module.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
                 await _agw.NonQuery(new AdapterArgs(_key) { Query = WORKSPACE.UPSERT }, (PARENT, modId), (NAME, info.Name), (DNAME, info.DisplayName), (GUID, info.Guid), (PATH, info.Path), (CUID, info.Cuid), (CONTROLMODE, (int)info.ControlMode), (PARSEMODE, (int)info.ParseMode));
             }
-
-            exists = await _agw.Scalar(new AdapterArgs(_key) { Query = WORKSPACE.EXISTS_BY_CUID }, (CUID, info.Cuid));
-
-            if (exists != null && exists.IsNumericType()) {
+            return await ValidateAndCache(WORKSPACE.EXISTS_BY_CUID, "Workspace", info, null, (CUID, info.Cuid));
+        }
+        async Task<IFeedback> ValidateAndCache(string query, string title, IOSSDirectory info, Func<IOSSDirectory, Task> preProcess, params (string key, object value)[] parameters) {
+            var result = await _agw.Scalar(new AdapterArgs(_key) { Query = query }, parameters);
+            if (result != null && result.IsNumericType()) {
+                if (long.TryParse(result.ToString(), out var id)) {
+                    info.Id = id;
+                }
                 //Every time a client is sucessfully done. We validate if it is present or not.
-                await AddComponentCache(info);
-                long.TryParse(exists.ToString(), out var id);
-                return new Feedback(true, "WorkSpace Indexed.") { Result = id };
+                await AddComponentCache(info, preProcess);
+                return new Feedback(true, $@"{title} - {info.Name} Indexed.") { Result = id };
             }
-
-            return new Feedback(false, "Unable to index the module");
+            return new Feedback(false, "Unable to index");
         }
         public async Task Validate() {
             try {
@@ -196,16 +205,16 @@ namespace Haley.Utils {
         }
         async Task AddComponentCache(IOSSDirectory info, Func<IOSSDirectory,Task> preProcess = null) {
             if (info == null) return;
-            if (_idxAllDirectories.ContainsKey(info.Cuid) && _idxAllDirectories[info.Cuid] != null) return; 
+            if (_cache.ContainsKey(info.Cuid) && _cache[info.Cuid] != null) return; 
             
             if (preProcess != null) {
                 await preProcess(info);
             }   
 
-            if (_idxAllDirectories.ContainsKey(info.Cuid)) {
-                _idxAllDirectories.TryUpdate(info.Cuid, info, null); //Gives the schema name
+            if (_cache.ContainsKey(info.Cuid)) {
+                _cache.TryUpdate(info.Cuid, info, null); //Gives the schema name
             } else {
-                _idxAllDirectories.TryAdd(info.Cuid, info);
+                _cache.TryAdd(info.Cuid, info);
             }
         }
         async Task CreateModuleDBInstance(IOSSDirectory dirInfo) {
@@ -234,25 +243,28 @@ namespace Haley.Utils {
         }
         public bool TryAddInfo(IOSSDirectory dirInfo, bool replace = false) {
             if (dirInfo == null || !dirInfo.Name.AssertValue(false) || !dirInfo.Cuid.AssertValue(false)) return false;
-            if (_idxAllDirectories.ContainsKey(dirInfo.Cuid)) {
+            if (_cache.ContainsKey(dirInfo.Cuid)) {
                 if (!replace) return false;
-                return _idxAllDirectories.TryUpdate(dirInfo.Cuid, dirInfo, _idxAllDirectories[dirInfo.Cuid]);
+                return _cache.TryUpdate(dirInfo.Cuid, dirInfo, _cache[dirInfo.Cuid]);
             } else {
-                return _idxAllDirectories.TryAdd(dirInfo.Cuid, dirInfo);
+                return _cache.TryAdd(dirInfo.Cuid, dirInfo);
             }
             return true;
         }
         public bool TryGetComponentInfo<T>(string key, out T component) where T : IOSSDirectory {
             component = default(T);
-            if (string.IsNullOrWhiteSpace(key) || !_idxAllDirectories.ContainsKey(key)) return false;
-            var data = _idxAllDirectories[key];
+            if (string.IsNullOrWhiteSpace(key) || !_cache.ContainsKey(key)) return false;
+            var data = _cache[key];
             if (data == null || !(data is T)) return false;
             component = (T)data;
             return true;
         }
-        public MariaDBIndexing(IAdapterGateway agw, string key) {
+        public MariaDBIndexing(IAdapterGateway agw, string key, ILogger logger) : this(agw, key, logger, false) { }
+        public MariaDBIndexing(IAdapterGateway agw, string key, ILogger logger, bool throwExceptions) {
             _key = key;
             _agw = agw;
+            _logger = logger;
+            ThrowExceptions = throwExceptions;
         }
     }
 }

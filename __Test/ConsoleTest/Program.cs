@@ -6,6 +6,7 @@ using ConsoleTest.Models;
 using Haley.Abstractions;
 using Haley.Models;
 using Haley.Utils;
+using System.Security.Cryptography;
 
 //new Testing().ConfigTest();
 await new Testing().StorageTest();
@@ -136,7 +137,7 @@ class Testing {
     public async Task StorageTest() {
         try {
             var _agw = new AdapterGateway() { ThrowCRUDExceptions = true }; //Only for testing.
-            var dss = new DiskStorageService(_agw,"mss_db");
+            var dss = new DiskStorageService(_agw, "mss_db") { ThrowExceptions = true};
             await dss.RegisterClient(new OSSControlled("bcde"));
             await dss.RegisterClient(new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterClient("daep");

@@ -10,6 +10,7 @@ namespace Haley.Models {
     public class OSSInfo : IOSSInfo {
         public const string DEFAULTNAME = "default";
         public string Name { get; private set; }
+        public long Id { get; set; }
         private string _displayName;
         public string DisplayName {
             get { return _displayName; }
