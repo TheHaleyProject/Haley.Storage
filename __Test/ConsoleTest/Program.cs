@@ -150,6 +150,7 @@ class Testing {
             await dss.RegisterModule("bcde","daep");
             await dss.RegisterModule("arya","daep");
             await dss.RegisterWorkSpace("common", "daep","bcde",is_virtual:true);
+            await dss.RegisterWorkSpace("demo2", "daep","bcde",OSSControlMode.Guid,OSSParseMode.Generate, is_virtual:true);
             await dss.RegisterModule(new OSSControlled("test",OSSControlMode.Guid),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("test12"),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("contest", OSSControlMode.Guid),new OSSControlled("bcde"));
@@ -178,7 +179,7 @@ class Testing {
                     var status = await dss.Upload(new OSSWriteRequest("daep", "bcde") {
                         FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
                         ResolveMode = OSSResolveMode.Revise
-                    }.SetComponent(new OSSControlled("common", isVirtual: true), OSSComponent.WorkSpace));
+                    }.SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace));
                     Console.WriteLine($@"{Environment.NewLine}Status : {status.Status}, Message : {status.Message}, Result : {status.Result?.ToJson() ?? string.Empty}");
                 }
             }
