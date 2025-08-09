@@ -7,8 +7,10 @@ using Microsoft.VisualBasic;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using System.Security.AccessControl;
 using System.Security.Claims;
@@ -17,8 +19,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Xml.XPath;
 using static Haley.Internal.IndexingConstant;
 using static Haley.Internal.IndexingQueries;
+using static System.Net.Mime.MediaTypeNames;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Haley.Utils {
     public class MariaDBIndexing : IDSSIndexing {
@@ -46,38 +51,142 @@ namespace Haley.Utils {
         public Guid GUIDGenerator(IOSSRead request) {
             return UIDGeneratorInternal(request).Result.guid;
         }
-        async Task<(bool status, (long id, string uid) result)> EnsureWorkSpace(IOSSRead request) {
-            if (!_cache.ContainsKey(request.Workspace.Cuid)) return (false, (0, string.Empty));
+        async Task<(bool status, long id)> EnsureWorkSpace(IOSSRead request) {
+            if (!_cache.ContainsKey(request.Workspace.Cuid)) return (false, 0);
+            var dbid = request.Module.Cuid;
             var wspace = _cache[request.Workspace.Cuid];
             //Check if workspace exists in the database.
-            var wspace_exists = await _agw.Scalar(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.EXISTS }, (ID, wspace.Id));
-            if (wspace_exists == null) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.INSERT }, (ID, wspace.Id));
-            wspace_exists = await _agw.Scalar(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.WORKSPACE.EXISTS }, (ID, wspace.Id));
-            if (wspace_exists == null) throw new Exception($@"Unable to insert the workspace id {wspace.Id} into the database {request.Module.Cuid}");
-            return (true, (wspace.Id,request.Module.Cuid));
+            var ws = await InsertAndFetchIDScalar(dbid,
+                () => (INSTANCE.WORKSPACE.EXISTS, Consolidate((ID, wspace.Id))),
+                () => (INSTANCE.WORKSPACE.INSERT, Consolidate((ID, wspace.Id))),
+                $@"Unable to insert the workspace  {wspace.Id}");
+            return (true, wspace.Id);
         }
 
         async Task<(bool status, (long id, string uid) result)> EnsureDirectory(IOSSRead request, long ws_id) {
             if (ws_id == 0) return (false, (0, string.Empty));
+            var dbid = request.Module.Cuid;
             //If directory name is not provided, then go for "default" as usual
             var dirParent = request.Folder?.Parent?.Id ?? 0;
             var dirName = request.Folder?.Name ?? OSSInfo.DEFAULTNAME;
             var dirDbName = dirName.ToDBName();
-            var existing = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS ,Filter = ResultFilter.FirstDictionary}, (WSPACE, ws_id),(PARENT,dirParent),(NAME, dirDbName));
-            if (existing == null || !(existing is Dictionary<string,object> dic1) || dic1.Count < 1) await _agw.NonQuery(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.INSERT }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName),(DNAME,dirName));
-             existing = await _agw.Read(new AdapterArgs(request.Module.Cuid) { Query = INSTANCE.DIRECTORY.EXISTS ,Filter = ResultFilter.FirstDictionary }, (WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName));
-            if (existing == null || !(existing is Dictionary<string, object> dic) || dic.Count < 1) throw new Exception($@"Unable to insert the directory {dirName} to the workspace : {ws_id} into the database {request.Module.Cuid}");
-            return (true, ((long)dic["id"], (string)dic["cuid"]));
+
+            var dirInfo = await InsertAndFetchIDRead(dbid, 
+                () => (INSTANCE.DIRECTORY.EXISTS, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName))), 
+                () => (INSTANCE.DIRECTORY.INSERT, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName), (DNAME, dirName))), 
+                $@"Unable to insert the directory {dirName} to the workspace : {ws_id}");
+           
+            return (true, (dirInfo.id, dirInfo.uid));
+        }
+
+        async Task<long> InsertAndFetchIDScalar(string dbid, Func<(string query,(string key,object value)[] parameters)> check, Func<(string query, (string key, object value)[] parameters)> insert = null, string failureMessage = "Error", bool preCheck = true) {
+            if (check == null) return 0;
+           
+            var checkInput = check.Invoke();
+            object info = null;
+            if (preCheck) info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }, checkInput.parameters);
+
+            if (info == null) {
+                if (insert == null) return 0;
+                var insertInput = insert.Invoke();
+                await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }, insertInput.parameters);
+                info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }, checkInput.parameters);
+            }
+            long id = 0;
+            if (info == null || !long.TryParse(info.ToString(), out id)) throw new Exception($@"{failureMessage} from the database {dbid}");
+            return id;
+        }
+
+        async Task<(long id, string uid)> InsertAndFetchIDRead(string dbid, Func<(string query, (string key, object value)[] parameters)> check = null, Func<(string query, (string key, object value)[] parameters)> insert = null, string failureMessage = "Error", bool preCheck = true) {
+            if (check == null) return (0, string.Empty);
+            var checkInput = check.Invoke();
+
+            object info = null;
+            if (preCheck) info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }, checkInput.parameters);
+
+            if (info == null || !(info is Dictionary<string, object> dic1) || dic1.Count < 1) {
+                if (insert == null) return (0, string.Empty);
+                var insertInput = insert.Invoke();
+                await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }, insertInput.parameters);
+                info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }, checkInput.parameters);
+            }
+            long id = 0;
+            if (info == null || !(info is Dictionary<string, object> dic) || dic.Count < 1) throw new Exception($@"{failureMessage} from the database {dbid}");
+            return ((long)dic["id"], (string)dic["uid"]);
+        }
+
+        (string key,object value)[] Consolidate(params (string, object)[] parameters) {
+            return parameters;
+        }
+
+       async Task<(bool status, long id)> EnsureNameStore(IOSSRead request) {
+            if (string.IsNullOrWhiteSpace(request.TargetName)) return (false, 0);
+            var name = Path.GetFileNameWithoutExtension(request.TargetName)?.Trim();
+            var ext = Path.GetExtension(request.TargetName)?.Trim();
+            if (string.IsNullOrWhiteSpace(ext)) ext = OSSInfo.DEFAULTNAME;
+            if (string.IsNullOrWhiteSpace(name)) return (false, 0);
+            name = name.ToDBName();
+            ext = ext.ToDBName();
+
+            var dbid = request.Module.Cuid;
+
+            //Extension Exists?
+            long extId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.EXTENSION.EXISTS, Consolidate((NAME, ext))), () => (INSTANCE.EXTENSION.INSERT,Consolidate((NAME, ext))), $@"Unable to fetch extension id for {ext}");
+
+            // Name Exists ?
+            long nameId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.VAULT.EXISTS, Consolidate((NAME, name))), () => (INSTANCE.VAULT.INSERT, Consolidate((NAME, name))), $@"Unable to fetch name id for {name}");
+
+            //Namestore Exists?
+            long nsId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.NAMESTORE.EXISTS, Consolidate((NAME, nameId), (EXT, extId))), () => (INSTANCE.NAMESTORE.INSERT, Consolidate((NAME, nameId), (EXT, extId))), $@"Unable to fetch name store id for name : {name} and extension : {ext}");
+
+            return (true, nsId);
         }
 
         async Task<(long id,Guid guid)> UIDGeneratorInternal(IOSSRead request) {
             try {
-                var result = (0, Guid.Empty);
+                (long, Guid) result = (0, Guid.Empty);
                 var ws = await EnsureWorkSpace(request);
                 if (!ws.status) return result;
-                var dir = await EnsureDirectory(request, ws.result.id);
+                var dir = await EnsureDirectory(request, ws.id);
+                if (!dir.status) return result;
+                var ns = await EnsureNameStore(request);
+                if (!ns.status) return result;
 
+                var dbid = request.Module.Cuid;
+                var docInfo = await InsertAndFetchIDRead(dbid,() => (INSTANCE.DOCUMENT.EXISTS, Consolidate((PARENT, dir.result.id), (NAME, ns.id))));
+                bool docExists = docInfo.id != 0;
+                if (!docExists) {
+                    // Insert it.
+                    docInfo = await InsertAndFetchIDRead(dbid, 
+                        () => (INSTANCE.DOCUMENT.EXISTS, Consolidate((PARENT, dir.result.id), (NAME, ns.id))),
+                        ()=> (INSTANCE.DOCUMENT.INSERT, Consolidate((WSPACE,ws.id), (PARENT, dir.result.id), (NAME, ns.id))),
+                        $@"Unable to insert document with name {request.TargetName}",false);
+                    var dname = Path.GetFileName(request.TargetName);
+                    await _agw.NonQuery(new AdapterArgs(dbid) { Query = INSTANCE.DOCUMENT.INSERT_INFO }, (PARENT, docInfo.id), (DNAME, dname));
+                }
 
+                int version = 1;
+                //If Doc exists.. we just need to revise the version.
+                if (docExists) {
+                    //Assuming that there is a version. Get the latest version.
+                    var currentVersion = await _agw.Scalar(new AdapterArgs(dbid) { Query = INSTANCE.DOCVERSION.FIND_LATEST }, (PARENT, docInfo.id));
+                    if (currentVersion != null && int.TryParse(currentVersion.ToString(),out int cver)) {
+                        version = ++cver;
+                    }
+                }
+
+                var dvInfo = await InsertAndFetchIDRead(dbid,
+                    () => (INSTANCE.DOCVERSION.EXISTS, Consolidate((PARENT, docInfo.id), (VERSION, version))),
+                    () => (INSTANCE.DOCVERSION.INSERT, Consolidate((PARENT, docInfo.id), (VERSION, version))),
+                    $@"Unable to insert document version for the document {docInfo.id}", false);
+
+                if (dvInfo.id > 0 && !string.IsNullOrWhiteSpace(dvInfo.uid)) {
+                    //Check if the incoming uid is in proper GUID format.
+                    Guid dvId = Guid.Empty;
+                    if (dvInfo.uid.IsValidGuid(out dvId) || dvInfo.uid.IsCompactGuid(out dvId)) {
+                        result = (dvInfo.id, dvId);
+                    }
+                }
                 return result;
             } catch (Exception ex) {
                 _logger?.LogError(ex.Message);

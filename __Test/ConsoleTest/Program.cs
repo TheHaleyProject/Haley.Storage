@@ -143,12 +143,14 @@ class Testing {
             await dss.RegisterClient("daep");
             await dss.RegisterModule("lingam","bcde");
             await dss.RegisterModule("bcde","daep");
+            await dss.RegisterModule("arya","daep");
             await dss.RegisterWorkSpace("common", "daep","bcde",is_virtual:true);
             await dss.RegisterModule(new OSSControlled("test",OSSControlMode.Guid),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("test12"),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("contest", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterModule(new OSSControlled("test", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterWorkSpace(null,"bcde","lingam");
+            await dss.RegisterWorkSpace("drive","arya","lingam");
 
             for (int i = 0; i < 4; i++) {
                 var status = await dss.Upload(new OSSWriteRequest("daep","bcde") {

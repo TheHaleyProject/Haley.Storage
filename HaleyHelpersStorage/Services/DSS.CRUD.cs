@@ -37,7 +37,7 @@ namespace Haley.Services {
                             exten = Path.GetExtension(fs.Name);
                         }
                     } while (false); //One time event
-                    if (!string.IsNullOrWhiteSpace(exten)) {
+                    if (!string.IsNullOrWhiteSpace(exten) && !gPaths.targetPath.EndsWith(exten)) {
                         gPaths.targetPath += $@"{exten}";
                     }
                 }

@@ -16,7 +16,7 @@
 
 
 -- Dumping database structure for dss_core
-CREATE DATABASE IF NOT EXISTS `dss_core`; /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
+CREATE DATABASE IF NOT EXISTS `dss_core` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
 USE `dss_core`;
 
 -- Dumping structure for table dss_core.client
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `client` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_client` (`name`),
   UNIQUE KEY `unq_client_1` (`guid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1975 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS `client_keys` (
 
 -- Data exporting was unselected.
 
-DROP PROCEDURE IF EXISTS `DropDatabasesWithPrefix`;
 -- Dumping structure for procedure dss_core.DropDatabasesWithPrefix
 DELIMITER //
 CREATE PROCEDURE `DropDatabasesWithPrefix`(IN prefix VARCHAR(100))
@@ -95,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `module` (
   UNIQUE KEY `unq_module` (`parent`,`guid`),
   UNIQUE KEY `unq_module_0` (`cuid`),
   CONSTRAINT `fk_direcory_client` FOREIGN KEY (`parent`) REFERENCES `client` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1966 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
@@ -110,7 +109,7 @@ CREATE TABLE IF NOT EXISTS `workspace` (
   `path` varchar(200) NOT NULL,
   `active` bit(1) NOT NULL DEFAULT b'1',
   `control_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0 - none\n1 - numbers\n2 - hash\n3 - both\n\nFor unmanaged versions, the',
-  `parse_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0- Parse\n1- Generate\n2- Parse or generate',
+  `parse_mode` int(11) NOT NULL DEFAULT 0 COMMENT '0- Parse //Either you send it.\n1- Generate //Or I generate it.',
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -120,7 +119,7 @@ CREATE TABLE IF NOT EXISTS `workspace` (
   CONSTRAINT `fk_workspace_module` FOREIGN KEY (`parent`) REFERENCES `module` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `cns_workspace` CHECK (`control_mode` >= 0 and `control_mode` <= 3),
   CONSTRAINT `cns_workspace_0` CHECK (`parse_mode` >= 0 and `parse_mode` <= 2)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1923 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 

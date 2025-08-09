@@ -22,32 +22,32 @@ USE `dss_client`;
 -- Dumping structure for table dss_client.directory
 CREATE TABLE IF NOT EXISTS `directory` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `parent` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Can be null for root folders. We mark it as 0 for root folders',
-  `name` varchar(120) NOT NULL,
   `display_name` varchar(120) NOT NULL,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `workspace` bigint(20) NOT NULL,
-  `cuid` varchar(48) NOT NULL DEFAULT uuid(),
+  `cuid` varchar(48) NOT NULL DEFAULT 'uuid()',
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT 'soft delete',
+  `name` varchar(120) NOT NULL,
+  `parent` bigint(20) NOT NULL DEFAULT 0 COMMENT 'Can be null for root folders. We mark it as 0 for root folders',
+  `workspace` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_directory` (`workspace`,`parent`,`name`),
   UNIQUE KEY `unq_directory_0` (`cuid`),
   CONSTRAINT `fk_directory_workspace` FOREIGN KEY (`workspace`) REFERENCES `workspace` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1000 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table dss_client.document
 CREATE TABLE IF NOT EXISTS `document` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `workspace` bigint(20) NOT NULL,
-  `cuid` varchar(48) NOT NULL DEFAULT uuid() COMMENT 'Collision Resistant Global unique identifier',
-  `created` timestamp NOT NULL DEFAULT current_timestamp(),
-  `modified` timestamp NOT NULL DEFAULT current_timestamp(),
-  `name` bigint(20) NOT NULL,
   `parent` bigint(20) NOT NULL,
+  `name` bigint(20) NOT NULL,
+  `cuid` varchar(48) NOT NULL DEFAULT 'uuid()' COMMENT 'Collision Resistant Global unique identifier',
+  `created` timestamp NOT NULL DEFAULT current_timestamp(),
+  `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT 'Soft delete',
+  `workspace` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_file_index` (`cuid`),
   UNIQUE KEY `unq_document` (`parent`,`name`),
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS `document` (
   CONSTRAINT `fk_document_directory` FOREIGN KEY (`parent`) REFERENCES `directory` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_document_name_store` FOREIGN KEY (`name`) REFERENCES `name_store` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_document_workspace` FOREIGN KEY (`workspace`) REFERENCES `workspace` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1988 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
@@ -75,17 +75,16 @@ CREATE TABLE IF NOT EXISTS `doc_info` (
 -- Dumping structure for table dss_client.doc_version
 CREATE TABLE IF NOT EXISTS `doc_version` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `cuid` varchar(48) NOT NULL DEFAULT 'uuid()',
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
-  `size` bigint(20) NOT NULL COMMENT 'in bytes',
   `ver` int(11) NOT NULL DEFAULT 1,
   `parent` bigint(20) NOT NULL,
-  `cuid` varchar(48) NOT NULL DEFAULT uuid(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `unq_doc_version` (`cuid`),
   UNIQUE KEY `unq_file_version` (`parent`,`ver`),
+  UNIQUE KEY `unq_doc_version` (`cuid`),
   KEY `idx_file_version_0` (`created`),
   CONSTRAINT `fk_doc_version_document` FOREIGN KEY (`parent`) REFERENCES `document` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1996 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
@@ -95,21 +94,21 @@ CREATE TABLE IF NOT EXISTS `extension` (
   `name` varchar(100) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_extension` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1000 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table dss_client.name_store
 CREATE TABLE IF NOT EXISTS `name_store` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `extension` int(11) NOT NULL,
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unq_name_store` (`name`,`extension`),
   KEY `idx_name_store_0` (`extension`,`name`),
   CONSTRAINT `fk_name_store_extension` FOREIGN KEY (`extension`) REFERENCES `extension` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `fk_name_store_name_vault` FOREIGN KEY (`name`) REFERENCES `vault` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=900 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
@@ -119,15 +118,16 @@ CREATE TABLE IF NOT EXISTS `vault` (
   `name` varchar(200) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_name_store` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=500 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table dss_client.version_info
 CREATE TABLE IF NOT EXISTS `version_info` (
   `id` bigint(20) NOT NULL,
-  `path` text NOT NULL,
   `saveas_name` varchar(200) NOT NULL,
+  `path` text NOT NULL,
+  `size` bigint(20) NOT NULL DEFAULT 0 COMMENT 'SIZE IN BYTES',
   PRIMARY KEY (`id`),
   KEY `idx_version_info` (`saveas_name`),
   CONSTRAINT `fk_version_info_doc_version` FOREIGN KEY (`id`) REFERENCES `doc_version` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION

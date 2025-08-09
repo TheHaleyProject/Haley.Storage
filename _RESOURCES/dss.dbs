@@ -40,7 +40,9 @@
 			<fk name="fk_directory_workspace" to_schema="dss_client" to_table="workspace" >
 				<fk_column name="workspace" pk="id" />
 			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 1000  
+]]></options>
 		</table>
 		<table name="doc_info" prior="doc_name" >
 			<column name="file" type="BIGINT" mandatory="y" />
@@ -66,9 +68,6 @@
 			<column name="created" prior="created_at" type="TIMESTAMP" mandatory="y" >
 				<defo><![CDATA[current_timestamp()]]></defo>
 			</column>
-			<column name="size" type="BIGINT" mandatory="y" >
-				<comment><![CDATA[in bytes]]></comment>
-			</column>
 			<column name="ver" prior="version" type="INT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
 			</column>
@@ -89,7 +88,9 @@
 			<fk name="fk_doc_version_document" to_schema="dss_client" to_table="document" >
 				<fk_column name="parent" pk="id" />
 			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 1996  
+]]></options>
 		</table>
 		<table name="document" prior="doc_master" >
 			<column name="id" type="BIGINT" mandatory="y" >
@@ -141,7 +142,9 @@
 			<fk name="fk_document_name_store" to_schema="dss_client" to_table="name_store" >
 				<fk_column name="name" pk="id" />
 			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 1988  
+]]></options>
 		</table>
 		<table name="extension" prior="extensions" >
 			<column name="id" type="INT" mandatory="y" >
@@ -154,7 +157,9 @@
 			<index name="idx_extension" unique="NORMAL" >
 				<column name="name" />
 			</index>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 1000  
+]]></options>
 		</table>
 		<table name="name_store" prior="name_" >
 			<column name="extension" type="INT" mandatory="y" />
@@ -179,7 +184,9 @@
 			<fk name="fk_name_store_name_vault" to_schema="dss_client" to_table="vault" >
 				<fk_column name="name" pk="id" />
 			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 900  
+]]></options>
 		</table>
 		<table name="vault" prior="name_vault" >
 			<column name="id" type="BIGINT" mandatory="y" >
@@ -192,12 +199,18 @@
 			<index name="idx_name_store" unique="NORMAL" >
 				<column name="name" />
 			</index>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 500  
+]]></options>
 		</table>
 		<table name="version_info" prior="version_" >
 			<column name="id" type="BIGINT" mandatory="y" />
 			<column name="saveas_name" type="VARCHAR" length="200" mandatory="y" />
 			<column name="path" type="TEXT" mandatory="y" />
+			<column name="size" type="BIGINT" mandatory="y" >
+				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[SIZE IN BYTES]]></comment>
+			</column>
 			<index name="pk_version_info" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -247,7 +260,9 @@ We would have anyhow created the guid based on the provided name. If the client 
 			<index name="unq_client_1" unique="UNIQUE_KEY" >
 				<column name="guid" />
 			</index>
-			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci]]></options>
+			<options><![CDATA[ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci
+ AUTO_INCREMENT 1975  
+]]></options>
 		</table>
 		<table name="client_keys" prior="client_key" >
 			<column name="client" type="INT" mandatory="y" />
@@ -304,7 +319,9 @@ We would have anyhow created the guid based on the provided name. If the client 
 			<fk name="fk_direcory_client" to_schema="dss_core" to_table="client" >
 				<fk_column name="parent" pk="id" />
 			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 1966  
+]]></options>
 		</table>
 		<table name="workspace" prior="workspa" >
 			<column name="id" type="INT" mandatory="y" >
@@ -365,7 +382,9 @@ For unmanaged versions, the]]></comment>
 			<fk name="fk_workspace_module" to_schema="dss_core" to_table="module" >
 				<fk_column name="parent" pk="id" />
 			</fk>
-			<options><![CDATA[engine=InnoDB]]></options>
+			<options><![CDATA[engine=InnoDB
+ AUTO_INCREMENT 1923  
+]]></options>
 		</table>
 		<procedure name="DropDatabasesWithPrefix" id="44f5048d-bf31-4cd2-831b-47ca38844d2c" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE PROCEDURE ${nameWithSchemaName}(IN prefix VARCHAR(100))
@@ -398,15 +417,15 @@ END]]></string>
 		</procedure>
 	</schema>
 	<layout name="mssclient" id="3ffb53d2-b523-405c-b56e-4864481bd7c9" joined_routing="y" show_relation="cascade" >
-		<entity schema="dss_client" name="vault" color="C1D8EE" x="57" y="513" />
-		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="266" />
 		<entity schema="dss_client" name="workspace" color="C1D8EE" x="266" y="589" />
-		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="437" y="304" />
 		<entity schema="dss_client" name="version_info" color="C1D8EE" x="437" y="171" />
+		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="437" y="323" />
+		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="266" />
+		<entity schema="dss_client" name="vault" color="C1D8EE" x="57" y="513" />
 		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="437" />
-		<entity schema="dss_client" name="name_store" color="C1D8EE" x="76" y="380" />
 		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="361" />
-		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="171" />
+		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="190" />
+		<entity schema="dss_client" name="name_store" color="C1D8EE" x="76" y="380" />
 		<shape x="57" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>
@@ -442,6 +461,62 @@ ALTER TABLE dss_core.module MODIFY path VARCHAR(200)     COMMENT 'Path is not ma
 		</script>
 		<script name="SQL_Editor_002" id="a898431d-5c20-41c2-b8e3-7df07855365f" language="SQL" >
 			<string><![CDATA[ALTER TABLE dss_core.client ALTER COLUMN modified SET DEFAULT CURRENT_TIMESTAMP;
+]]></string>
+		</script>
+		<script name="directory" id="12f227f9-d56a-4368-8054-12f97ec56667" language="SQL" >
+			<string><![CDATA[CREATE  TABLE dss_client.directory ( 
+	id                   BIGINT    NOT NULL AUTO_INCREMENT  PRIMARY KEY,
+	display_name         VARCHAR(120)    NOT NULL   ,
+	created              TIMESTAMP  DEFAULT current_timestamp()  NOT NULL   ,
+	modified             TIMESTAMP  DEFAULT current_timestamp() ON UPDATE CURRENT_TIMESTAMP NOT NULL   ,
+	cuid                 VARCHAR(48)  DEFAULT 'uuid()'  NOT NULL   ,
+	deleted              BIT  DEFAULT 0  NOT NULL   ,
+	name                 VARCHAR(120)    NOT NULL   ,
+	parent               BIGINT  DEFAULT 0  NOT NULL   ,
+	workspace            BIGINT    NOT NULL   ,
+	CONSTRAINT unq_directory UNIQUE ( workspace, parent, name ) ,
+	CONSTRAINT unq_directory_0 UNIQUE ( cuid ) 
+ ) engine=InnoDB
+ AUTO_INCREMENT 1000;
+
+ALTER TABLE dss_client.directory ADD CONSTRAINT fk_directory_workspace FOREIGN KEY ( workspace ) REFERENCES dss_client.workspace( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.directory MODIFY deleted BIT  NOT NULL DEFAULT 0  COMMENT 'soft delete';
+
+ALTER TABLE dss_client.directory MODIFY parent BIGINT  NOT NULL DEFAULT 0  COMMENT 'Can be null for root folders. We mark it as 0 for root folders';
+
+]]></string>
+		</script>
+		<script name="document" id="6aa03fd5-fe58-466c-a196-a1ca1c86e830" language="SQL" >
+			<string><![CDATA[CREATE  TABLE dss_client.document ( 
+	id                   BIGINT    NOT NULL AUTO_INCREMENT  PRIMARY KEY,
+	parent               BIGINT    NOT NULL   ,
+	name                 BIGINT    NOT NULL   ,
+	cuid                 VARCHAR(48)  DEFAULT 'uuid()'  NOT NULL   ,
+	created              TIMESTAMP  DEFAULT current_timestamp()  NOT NULL   ,
+	modified             TIMESTAMP  DEFAULT current_timestamp() ON UPDATE CURRENT_TIMESTAMP NOT NULL   ,
+	deleted              BIT  DEFAULT 0  NOT NULL   ,
+	workspace            BIGINT    NOT NULL   ,
+	CONSTRAINT unq_file_index UNIQUE ( cuid ) ,
+	CONSTRAINT unq_document UNIQUE ( parent, name ) 
+ ) engine=InnoDB;
+
+CREATE INDEX fk_file_index_parent ON dss_client.document ( workspace );
+
+CREATE INDEX fk_document_directory ON dss_client.document ( parent );
+
+CREATE INDEX fk_document_name_store ON dss_client.document ( name );
+
+ALTER TABLE dss_client.document ADD CONSTRAINT fk_document_workspace FOREIGN KEY ( workspace ) REFERENCES dss_client.workspace( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.document ADD CONSTRAINT fk_document_directory FOREIGN KEY ( parent ) REFERENCES dss_client.directory( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.document ADD CONSTRAINT fk_document_name_store FOREIGN KEY ( name ) REFERENCES dss_client.name_store( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.document MODIFY cuid VARCHAR(48)  NOT NULL DEFAULT 'uuid()'  COMMENT 'Collision Resistant Global unique identifier';
+
+ALTER TABLE dss_client.document MODIFY deleted BIT  NOT NULL DEFAULT 0  COMMENT 'Soft delete';
+
 ]]></string>
 		</script>
 	</layout>

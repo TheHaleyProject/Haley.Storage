@@ -60,12 +60,12 @@ namespace Haley.Internal {
 
         public class INSTANCE {
            public class WORKSPACE {
-                public const string EXISTS = $@"select 1 from workspace as w where w.id = {ID};";
+                public const string EXISTS = $@"select w.id from workspace as w where w.id = {ID};";
                 public const string INSERT = $@"insert IGNORE into workspace (id) values ({ID});";
            }
 
             public class DIRECTORY {
-                public const string EXISTS = $@"select dir.id, dir.cuid from directory as dir where dir.workspace = {WSPACE} and dir.parent = {PARENT} and dir.name = {NAME};";
+                public const string EXISTS = $@"select dir.id, dir.cuid as uid from directory as dir where dir.workspace = {WSPACE} and dir.parent = {PARENT} and dir.name = {NAME};";
                 public const string EXISTS_BY_CUID = $@"select dir.id from directory as dir where dir.cuid = {CUID};";
                 public const string INSERT = $@"insert ignore into directory (workspace,parent,name,display_name) values ({WSPACE},{PARENT},{NAME},{DNAME});";
             }
@@ -85,16 +85,16 @@ namespace Haley.Internal {
             }
 
             public class DOCUMENT {
-                public const string EXISTS = $@"select doc.id , doc.cuid from document as doc where doc.parent = {PARENT} and doc.name = {NAME};";
-                public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid from document as doc where doc.cuid = {CUID};";
+                public const string EXISTS = $@"select doc.id , doc.cuid as uid from document as doc where doc.parent = {PARENT} and doc.name = {NAME};";
+                public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid as uid from document as doc where doc.cuid = {CUID};";
                 public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
                 public const string INSERT_INFO = $@"insert into doc_info (file,display_name) values ({PARENT}, {DNAME}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);";
             }
-
+            
             public class DOCVERSION {
-                public const string EXISTS = $@"select dv.id , dv.cuid from doc_version as dv where doc.parent = {PARENT} and doc.ver = {VERSION};";
-                public const string EXISTS_BY_CUID = $@"select dv.id , dv.cuid from doc_version as dv where d.cuid = {CUID};";
-                public const string INSERT = $@"insert ignore into doc_version (parent,ver,size) values({PARENT},{VERSION},{SIZE});";
+                public const string EXISTS = $@"select dv.id , dv.cuid as uid from doc_version as dv where dv.parent = {PARENT} and dv.ver = {VERSION};";
+                public const string EXISTS_BY_CUID = $@"select dv.id , dv.cuid from doc_version as dv where dv.cuid = {CUID};";
+                public const string INSERT = $@"insert ignore into doc_version (parent,ver) values({PARENT},{VERSION});";
                 public const string INSERT_INFO = $@"insert into version_info (saveas_name,path) values({SAVENAME},{PATH});";
                 public const string FIND_LATEST = $@"select MAX(dv.ver) from doc_version as dv where dv.parent = {PARENT};";
             }
