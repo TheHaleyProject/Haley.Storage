@@ -29,6 +29,8 @@ namespace Haley.Internal {
         public const string PARSEMODE = $@"@{nameof(PARSEMODE)}";
         public const string WSPACE = $@"@{nameof(WSPACE)}";
         public const string EXT = $@"@{nameof(EXT)}";
+        public const string VERSION = $@"@{nameof(VERSION)}";
+        public const string SIZE = $@"@{nameof(SIZE)}";
     }
 
     internal class IndexingQueries {
@@ -67,24 +69,35 @@ namespace Haley.Internal {
                 public const string EXISTS_BY_CUID = $@"select dir.id from directory as dir where dir.cuid = {CUID};";
                 public const string INSERT = $@"insert ignore into directory (workspace,parent,name,display_name) values ({WSPACE},{PARENT},{NAME},{DNAME});";
             }
-
-            public class DOCUMENT {
-                public const string EXISTS = $@"select doc.id , doc.cuid from document as doc where doc.parent = {PARENT} and doc.name = {NAME};";
-                public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid from document as doc where doc.cuid = {CUID};";
-                public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
-                public const string INSERT_INFO = $@"insert into doc_info (file,extension,display_name,saveas_name,path) values ({PARENT}, {EXT},{DNAME},{SAVENAME},{PATH}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),saveas_name = VALUES(saveas_name);";
-            }
             public class EXTENSION {
                 public const string EXISTS = $@"select ext.id from extension as ext where ext.name = {NAME};";
                 public const string INSERT = $@"insert ignore into extension (name) values ({NAME});";
             }
 
-            //public class DOCVERSION {
-            //    public const string EXISTS = $@"select dv.id , dv.cuid from doc_version as dv where doc.parent = {PARENT} and doc.name = {NAME};";
-            //    public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid from document as doc where doc.cuid = {CUID};";
-            //    public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
-            //    public const string INSERT_INFO = $@"insert into doc_info (file,extension,display_name,saveas_name,path) values ({PARENT}, {EXT},{DNAME},{SAVENAME},{PATH}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), path = VALUES(path),saveas_name = VALUES(saveas_name);";
-            //}
+            public class VAULT {
+                public const string EXISTS = $@"select v.id from vault as v where v.name = {NAME};";
+                public const string INSERT = $@"insert ignore into vault (name) values ({NAME});";
+            }
+
+            public class NAMESTORE {
+                public const string EXISTS = $@"select ns.id from name_store as ns where ns.name = {NAME} and ns.extension = {EXT};";
+                public const string INSERT = $@"insert ignore into name_store (name,extension) values ({NAME},{EXT});";
+            }
+
+            public class DOCUMENT {
+                public const string EXISTS = $@"select doc.id , doc.cuid from document as doc where doc.parent = {PARENT} and doc.name = {NAME};";
+                public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid from document as doc where doc.cuid = {CUID};";
+                public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
+                public const string INSERT_INFO = $@"insert into doc_info (file,display_name) values ({PARENT}, {DNAME}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);";
+            }
+
+            public class DOCVERSION {
+                public const string EXISTS = $@"select dv.id , dv.cuid from doc_version as dv where doc.parent = {PARENT} and doc.ver = {VERSION};";
+                public const string EXISTS_BY_CUID = $@"select dv.id , dv.cuid from doc_version as dv where d.cuid = {CUID};";
+                public const string INSERT = $@"insert ignore into doc_version (parent,ver,size) values({PARENT},{VERSION},{SIZE});";
+                public const string INSERT_INFO = $@"insert into version_info (saveas_name,path) values({SAVENAME},{PATH});";
+                public const string FIND_LATEST = $@"select MAX(dv.ver) from doc_version as dv where dv.parent = {PARENT};";
+            }
         }
     }
 }

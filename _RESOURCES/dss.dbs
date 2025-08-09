@@ -2,12 +2,6 @@
 <project name="haley-dss" database="MariaDb" id="93003ef9-df78-41a8-abf9-c1beee74eaca" >
 	<schema name="dss_client" >
 		<table name="directory" prior="directo" >
-			<column name="workspace" type="BIGINT" mandatory="y" />
-			<column name="parent" type="BIGINT" mandatory="y" >
-				<defo><![CDATA[0]]></defo>
-				<comment><![CDATA[Can be null for root folders. We mark it as 0 for root folders]]></comment>
-			</column>
-			<column name="name" type="VARCHAR" length="120" mandatory="y" />
 			<column name="id" type="BIGINT" mandatory="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
@@ -26,6 +20,12 @@
 				<defo><![CDATA[0]]></defo>
 				<comment><![CDATA[soft delete]]></comment>
 			</column>
+			<column name="name" type="VARCHAR" length="120" mandatory="y" />
+			<column name="parent" type="BIGINT" mandatory="y" >
+				<defo><![CDATA[0]]></defo>
+				<comment><![CDATA[Can be null for root folders. We mark it as 0 for root folders]]></comment>
+			</column>
+			<column name="workspace" type="BIGINT" mandatory="y" />
 			<index name="pk_directory_0" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -43,26 +43,16 @@
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
 		<table name="doc_info" prior="doc_name" >
-			<column name="extension" type="INT" />
 			<column name="file" type="BIGINT" mandatory="y" />
-			<column name="display_name" prior="original_name" type="VARCHAR" length="200" mandatory="y" />
-			<column name="saveas_name" type="VARCHAR" length="200" mandatory="y" />
-			<column name="path" type="TEXT" >
-				<comment><![CDATA[cached for performance]]></comment>
-			</column>
-			<column name="valid" type="INT" />
+			<column name="display_name" prior="name" type="VARCHAR" length="200" mandatory="y" />
 			<index name="pk_file_info_0" unique="PRIMARY_KEY" >
 				<column name="file" />
 			</index>
 			<index name="idx_doc_info" unique="NORMAL" >
-				<column name="extension" />
-				<column name="saveas_name" />
+				<column name="display_name" />
 			</index>
 			<fk name="fk_file_info_file_index_0" to_schema="dss_client" to_table="document" >
 				<fk_column name="file" pk="id" />
-			</fk>
-			<fk name="fk_doc_info_extension" to_schema="dss_client" to_table="extension" >
-				<fk_column name="extension" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -79,16 +69,16 @@
 			<column name="size" type="BIGINT" mandatory="y" >
 				<comment><![CDATA[in bytes]]></comment>
 			</column>
-			<column name="version" type="INT" mandatory="y" >
+			<column name="ver" prior="version" type="INT" mandatory="y" >
 				<defo><![CDATA[1]]></defo>
 			</column>
 			<column name="parent" prior="doc" type="BIGINT" mandatory="y" />
 			<index name="pk_file_version" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
-			<index name="idx_file_version" unique="NORMAL" >
+			<index name="unq_file_version" unique="UNIQUE_KEY" >
 				<column name="parent" />
-				<column name="version" />
+				<column name="ver" />
 			</index>
 			<index name="idx_file_version_0" unique="NORMAL" >
 				<column name="created" />
@@ -96,18 +86,17 @@
 			<index name="unq_doc_version" unique="UNIQUE_KEY" >
 				<column name="cuid" />
 			</index>
-			<fk name="fk_file_version_file_index" to_schema="dss_client" to_table="document" >
+			<fk name="fk_doc_version_document" to_schema="dss_client" to_table="document" >
 				<fk_column name="parent" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
-		<table name="document" prior="file_index" >
+		<table name="document" prior="doc_master" >
 			<column name="id" type="BIGINT" mandatory="y" >
 				<identity><![CDATA[AUTO_INCREMENT]]></identity>
 			</column>
-			<column name="workspace" prior="parent" type="BIGINT" mandatory="y" />
 			<column name="parent" prior="dir" type="BIGINT" mandatory="y" />
-			<column name="name" prior="saveas_name" type="VARCHAR" length="200" mandatory="y" />
+			<column name="name" prior="saveas_name" type="BIGINT" mandatory="y" />
 			<column name="cuid" prior="guid" type="VARCHAR" length="48" mandatory="y" >
 				<defo><![CDATA['uuid()']]></defo>
 				<comment><![CDATA[Collision Resistant Global unique identifier]]></comment>
@@ -123,6 +112,7 @@
 				<defo><![CDATA[0]]></defo>
 				<comment><![CDATA[Soft delete]]></comment>
 			</column>
+			<column name="workspace" prior="parent" type="BIGINT" mandatory="y" />
 			<index name="pk_fileindex" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
@@ -139,11 +129,17 @@
 				<column name="parent" />
 				<column name="name" />
 			</index>
+			<index name="fk_document_name_store" unique="NORMAL" >
+				<column name="name" />
+			</index>
 			<fk name="fk_document_workspace" to_schema="dss_client" to_table="workspace" >
 				<fk_column name="workspace" pk="id" />
 			</fk>
 			<fk name="fk_document_directory" to_schema="dss_client" to_table="directory" >
 				<fk_column name="parent" pk="id" />
+			</fk>
+			<fk name="fk_document_name_store" to_schema="dss_client" to_table="name_store" >
+				<fk_column name="name" pk="id" />
 			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
@@ -155,6 +151,62 @@
 			<index name="pk_file_extensions" unique="PRIMARY_KEY" >
 				<column name="id" />
 			</index>
+			<index name="idx_extension" unique="NORMAL" >
+				<column name="name" />
+			</index>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="name_store" prior="name_" >
+			<column name="extension" type="INT" mandatory="y" />
+			<column name="id" type="BIGINT" mandatory="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="name" type="BIGINT" mandatory="y" />
+			<index name="pk_name_store_0" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="unq_name_store" unique="UNIQUE_KEY" >
+				<column name="name" />
+				<column name="extension" />
+			</index>
+			<index name="idx_name_store_0" unique="NORMAL" >
+				<column name="extension" />
+				<column name="name" />
+			</index>
+			<fk name="fk_name_store_extension" to_schema="dss_client" to_table="extension" >
+				<fk_column name="extension" pk="id" />
+			</fk>
+			<fk name="fk_name_store_name_vault" to_schema="dss_client" to_table="vault" >
+				<fk_column name="name" pk="id" />
+			</fk>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="vault" prior="name_vault" >
+			<column name="id" type="BIGINT" mandatory="y" >
+				<identity><![CDATA[AUTO_INCREMENT]]></identity>
+			</column>
+			<column name="name" type="VARCHAR" length="200" mandatory="y" />
+			<index name="pk_name_store" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_name_store" unique="NORMAL" >
+				<column name="name" />
+			</index>
+			<options><![CDATA[engine=InnoDB]]></options>
+		</table>
+		<table name="version_info" prior="version_" >
+			<column name="id" type="BIGINT" mandatory="y" />
+			<column name="saveas_name" type="VARCHAR" length="200" mandatory="y" />
+			<column name="path" type="TEXT" mandatory="y" />
+			<index name="pk_version_info" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_version_info" unique="NORMAL" >
+				<column name="saveas_name" />
+			</index>
+			<fk name="fk_version_info_doc_version" to_schema="dss_client" to_table="doc_version" >
+				<fk_column name="id" pk="id" />
+			</fk>
 			<options><![CDATA[engine=InnoDB]]></options>
 		</table>
 		<table name="workspace" prior="module" >
@@ -346,13 +398,16 @@ END]]></string>
 		</procedure>
 	</schema>
 	<layout name="mssclient" id="3ffb53d2-b523-405c-b56e-4864481bd7c9" joined_routing="y" show_relation="cascade" >
-		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="57" y="361" />
-		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="247" />
-		<entity schema="dss_client" name="workspace" color="C1D8EE" x="418" y="266" />
-		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="380" />
-		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="190" />
-		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="361" />
-		<shape x="76" y="57" style="Rectangle" color="FF0000" >
+		<entity schema="dss_client" name="vault" color="C1D8EE" x="57" y="513" />
+		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="266" />
+		<entity schema="dss_client" name="workspace" color="C1D8EE" x="266" y="589" />
+		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="437" y="304" />
+		<entity schema="dss_client" name="version_info" color="C1D8EE" x="437" y="171" />
+		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="437" />
+		<entity schema="dss_client" name="name_store" color="C1D8EE" x="76" y="380" />
+		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="361" />
+		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="171" />
+		<shape x="57" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>
 		</shape>
