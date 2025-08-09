@@ -92,7 +92,7 @@ namespace Haley.Services {
             } finally {
                 if (input != null && Indexer != null && input.Module != null && input.File != null) {
                     //We try to make a call to the db to update the information about the file version info.
-                    var upInfo = await Indexer.UpdateDocumentInfo(input.Module.Cuid, input.File, input.TargetName);
+                    var upInfo = await Indexer.UpdateDocumentInfo(input.Module.Cuid, input.File);
                     Console.WriteLine($@"Document version update status: {upInfo.Status} {Environment.NewLine} Result : {upInfo.Result.ToString()}");
                 }
             }

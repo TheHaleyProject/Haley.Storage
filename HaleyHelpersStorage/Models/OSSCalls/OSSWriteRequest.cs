@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.Xml;
 
 namespace Haley.Models {
-    public class OSSWriteRequest : OSSReadRequest, IOSSWrite {
+    public class OSSWriteRequest : OSSReadFile, IOSSWrite {
         public string FileOriginalName { get; set; } //actual file name.
         public OSSResolveMode ResolveMode { get; set; } = OSSResolveMode.ReturnError;
         public int BufferSize { get; set; } = 8192;

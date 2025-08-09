@@ -9,7 +9,6 @@ namespace Haley.Models {
         public IOSSControlled Client { get; private set; } 
         public IOSSControlled Module { get; private set; }
         public IOSSControlled Workspace { get; private set; } 
-        public IOSSFileRoute File { get; set; }  
         public IOSSFolderRoute Folder { get; set; }
         public virtual OSSReadRequest SetComponent(OSSControlled input, OSSComponent type) {
             switch (type) {

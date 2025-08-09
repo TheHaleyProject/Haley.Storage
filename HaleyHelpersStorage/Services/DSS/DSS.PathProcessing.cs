@@ -110,7 +110,7 @@ namespace Haley.Services {
             if (isNumber) return (Config.SplitLengthNumber, Config.DepthNumber);
             return (Config.SplitLengthHash, Config.DepthHash);
         }
-        public void ProcessFileRoute(IOSSRead input) {
+        public void ProcessFileRoute(IOSSReadFile input) {
             //The last storage route should be in the format of a file
             if (input != null &&  (input.File == null || string.IsNullOrWhiteSpace(input.File.Path))) {
                 //We are trying to upload a file but the last storage route is not in the format of a file.
@@ -148,12 +148,13 @@ namespace Haley.Services {
                     .path;
 
                 if (input.File == null) {
-                    input.File = new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid, Version = holder.Version};
+                    input.File = new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid, Version = holder.Version,SaveAsName = holder.SaveAsName};
                 }
 
                 input.File.Path = targetFilePath;
-                if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = targetFileName;
+                if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = input.TargetName;
                 if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid = holder.Cuid;
+                if (string.IsNullOrWhiteSpace(input.File.SaveAsName)) input.File.SaveAsName = holder.SaveAsName;
                 if (input.File.Id < 1) input.File.Id = holder.Id;
                 if (input is IOSSWrite writeInp) {
                     input.File.Size = writeInp.FileStream?.Length ?? 0;
@@ -161,10 +162,10 @@ namespace Haley.Services {
             }
         }
 
-        public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool for_file , bool allowRootAccess = false, bool readonlyMode = false) {
+        public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool allowRootAccess = false, bool readonlyMode = false) {
             var bpath = FetchBasePath(input);
-            if (for_file) ProcessFileRoute(input);
-            var path = input?.BuildStoragePath(bpath,for_file, allowRootAccess, readonlyMode); //This will also ensure we are not trying to delete something 
+            if (input is IOSSReadFile fileRead) ProcessFileRoute(fileRead);
+            var path = input?.BuildStoragePath(bpath, allowRootAccess, readonlyMode); //This will also ensure we are not trying to delete something 
             return (bpath, path);
         }
     }

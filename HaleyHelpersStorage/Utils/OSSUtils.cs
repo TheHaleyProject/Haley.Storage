@@ -105,9 +105,12 @@ namespace Haley.Utils
             return joined.CreateGUID(HashMethod.Sha256).ToString("N");
         }
 
-        public static string BuildStoragePath(this IOSSRead input, string basePath, bool forFile, bool allowRootAccess = false, bool readonlyMode = false) {
+        public static string BuildStoragePath(this IOSSRead input, string basePath, bool allowRootAccess = false, bool readonlyMode = false) {
+            bool forFile = false;
             //While building storage path, may be we are building only the 
             if (input == null || !(input is OSSReadRequest req)) throw new ArgumentNullException($@"{nameof(IOSSRead)} cannot be null. It has to be of type {nameof(OSSReadRequest)}");
+            OSSReadFile fileReq = input as OSSReadFile;
+            if (fileReq != null) forFile = true;
 
             if (basePath.Contains("..")) throw new ArgumentOutOfRangeException("The base path contains invalid segments. Parent directory access is not allowed. Please fix");
             if (!Directory.Exists(basePath)) throw new DirectoryNotFoundException("Base directory not found. Please ensure it is present");
@@ -117,8 +120,8 @@ namespace Haley.Utils
                 if (input.Folder != null && !input.Folder.IsVirutal) {
                     req.SetTargetPath(Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess,readonlyMode)));
                 }
-                if (input.File != null && forFile) {
-                    req.SetTargetPath(Path.Combine(req.TargetPath, input.File.FetchRoutePath(req.TargetPath,true, allowRootAccess, readonlyMode)));
+                if (fileReq != null && fileReq.File != null) {
+                    req.SetTargetPath(Path.Combine(req.TargetPath, fileReq.File.FetchRoutePath(req.TargetPath,true, allowRootAccess, readonlyMode)));
                 }
             } else {
                 req.SetTargetPath(Path.Combine(basePath, req.TargetPath));
