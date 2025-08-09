@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `client` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `display_name` varchar(100) NOT NULL,
-  `guid` varchar(48) NOT NULL DEFAULT 'uuid()',
+  `guid` varchar(48) NOT NULL DEFAULT uuid(),
   `path` varchar(140) NOT NULL COMMENT 'Created only at register time.\nWe would have anyhow created the guid based on the provided name. If the client is created as managed, then the path should be based on the guid. or else it should be based on the name itself.',
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `modified` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),

@@ -282,12 +282,15 @@ namespace Haley.Utils {
                 //If the service or the db doesn't exist, we throw exception or else the system would assume that nothing is wrong. If they wish , they can still turn of the indexing.
                 if (!_agw.ContainsKey(_key)) throw new ArgumentException($@"Storage Indexing service validation failure.No adapter found for the given key {_key}");
                 //Next step is to find out if the database exists or not? Should we even try to check if the database exists or directly run the sql script and create the database if it doesn't exists?
+                var dbname = _agw[_key].Info?.DBName ?? DB_CORE_FALLBACK_NAME; //This is supposedly our db name.
+                var exists = await _agw.Scalar(new AdapterArgs(_key) { ExcludeDBInConString = true, Query = GENERAL.SCHEMA_EXISTS }, (NAME, dbname));
+                if (exists != null && exists.IsNumericType()) return;
                 var sqlFile = Path.Combine(AssemblyUtils.GetBaseDirectory(), DB_SQL_FILE_LOCATION, DB_CORE_SQL_FILE);
                 if (!File.Exists(sqlFile)) throw new ArgumentException($@"Master sql file for creating the storage DB is not found. Please check : {DB_CORE_SQL_FILE}");
                 //if the file exists, then run this file against the adapter gateway but ignore the db name.
                 var content = File.ReadAllText(sqlFile);
                 //We know that the file itself contains "dss_core" as the schema name. Replace that with new one.
-                var dbname = _agw[_key].Info?.DBName ?? DB_CORE_FALLBACK_NAME; //This is supposedly our db name.
+               
                 content = content.Replace(DB_CORE_SEARCH_TERM, dbname);
                 //?? Should we run everything in one go or run as separate statements???
                 //if the input contains any delimiter or procedure, remove them.

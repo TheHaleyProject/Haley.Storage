@@ -99,7 +99,7 @@
 			<column name="parent" prior="dir" type="BIGINT" mandatory="y" />
 			<column name="name" prior="saveas_name" type="BIGINT" mandatory="y" />
 			<column name="cuid" prior="guid" type="VARCHAR" length="48" mandatory="y" >
-				<defo><![CDATA['uuid()']]></defo>
+				<defo><![CDATA[uuid()]]></defo>
 				<comment><![CDATA[Collision Resistant Global unique identifier]]></comment>
 			</column>
 			<column name="created" prior="created_at" type="TIMESTAMP" mandatory="y" >
@@ -422,10 +422,10 @@ END]]></string>
 		<entity schema="dss_client" name="doc_info" color="C1D8EE" x="437" y="323" />
 		<entity schema="dss_client" name="extension" color="C1D8EE" x="57" y="266" />
 		<entity schema="dss_client" name="vault" color="C1D8EE" x="57" y="513" />
+		<entity schema="dss_client" name="name_store" color="C1D8EE" x="76" y="380" />
+		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="190" />
 		<entity schema="dss_client" name="directory" color="C1D8EE" x="437" y="437" />
 		<entity schema="dss_client" name="document" color="C1D8EE" x="247" y="361" />
-		<entity schema="dss_client" name="doc_version" color="C1D8EE" x="247" y="190" />
-		<entity schema="dss_client" name="name_store" color="C1D8EE" x="76" y="380" />
 		<shape x="57" y="57" style="Rectangle" color="FF0000" >
 			<comment><![CDATA[If the workspace is controlled, then the directories are LOGICAL or else 
 the directories are PHYSICAL]]></comment>
@@ -500,6 +500,39 @@ ALTER TABLE dss_client.directory MODIFY parent BIGINT  NOT NULL DEFAULT 0  COMME
 	CONSTRAINT unq_file_index UNIQUE ( cuid ) ,
 	CONSTRAINT unq_document UNIQUE ( parent, name ) 
  ) engine=InnoDB;
+
+CREATE INDEX fk_file_index_parent ON dss_client.document ( workspace );
+
+CREATE INDEX fk_document_directory ON dss_client.document ( parent );
+
+CREATE INDEX fk_document_name_store ON dss_client.document ( name );
+
+ALTER TABLE dss_client.document ADD CONSTRAINT fk_document_workspace FOREIGN KEY ( workspace ) REFERENCES dss_client.workspace( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.document ADD CONSTRAINT fk_document_directory FOREIGN KEY ( parent ) REFERENCES dss_client.directory( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.document ADD CONSTRAINT fk_document_name_store FOREIGN KEY ( name ) REFERENCES dss_client.name_store( id ) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dss_client.document MODIFY cuid VARCHAR(48)  NOT NULL DEFAULT 'uuid()'  COMMENT 'Collision Resistant Global unique identifier';
+
+ALTER TABLE dss_client.document MODIFY deleted BIT  NOT NULL DEFAULT 0  COMMENT 'Soft delete';
+
+]]></string>
+		</script>
+		<script name="document_001" id="a622f845-2b99-4b26-b08e-13f79073bf5a" language="SQL" >
+			<string><![CDATA[CREATE  TABLE dss_client.document ( 
+	id                   BIGINT    NOT NULL AUTO_INCREMENT  PRIMARY KEY,
+	parent               BIGINT    NOT NULL   ,
+	name                 BIGINT    NOT NULL   ,
+	cuid                 VARCHAR(48)  DEFAULT 'uuid()'  NOT NULL   ,
+	created              TIMESTAMP  DEFAULT current_timestamp()  NOT NULL   ,
+	modified             TIMESTAMP  DEFAULT current_timestamp() ON UPDATE CURRENT_TIMESTAMP NOT NULL   ,
+	deleted              BIT  DEFAULT 0  NOT NULL   ,
+	workspace            BIGINT    NOT NULL   ,
+	CONSTRAINT unq_file_index UNIQUE ( cuid ) ,
+	CONSTRAINT unq_document UNIQUE ( parent, name ) 
+ ) engine=InnoDB
+ AUTO_INCREMENT 1988;
 
 CREATE INDEX fk_file_index_parent ON dss_client.document ( workspace );
 
