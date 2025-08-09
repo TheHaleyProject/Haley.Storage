@@ -179,7 +179,7 @@ class Testing {
                         FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
                         ResolveMode = OSSResolveMode.Revise
                     }.SetComponent(new OSSControlled("common", isVirtual: true), OSSComponent.WorkSpace));
-                    Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
+                    Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}, Result : {status.Result?.ToJson() ?? string.Empty}");
                 }
             }
 

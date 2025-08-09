@@ -141,15 +141,16 @@ namespace Haley.Services {
                 var holder = new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse, isVirtual: false);
                 targetFilePath = OSSUtils.GenerateFileSystemSavePath(
                     holder,
-                    uidManager: () => { return Indexer?.UIDManager(input) ?? (0,Guid.Empty); },
+                    uidManager: (h) => { return Indexer?.UIDManager(input,h) ?? (0,Guid.Empty); },
                     splitProvider: SplitProvider,
                     suffix: Config.SuffixFile,
                     throwExceptions: true)
                     .path;
 
                 if (input.File == null) {
-                    input.File = new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid};
+                    input.File = new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid, Version = holder.Version};
                 }
+
                 input.File.Path = targetFilePath;
                 if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = targetFileName;
                 if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid = holder.Cuid;

@@ -44,8 +44,8 @@ namespace Haley.Utils {
 
         ConcurrentDictionary<string, IOSSDirectory> _cache = new ConcurrentDictionary<string, IOSSDirectory>();
         public bool ThrowExceptions { get; set; }
-        public (long id, Guid guid) UIDManager(IOSSRead request) {
-            return UIDManagerInternal(request).Result;
+        public (long id, Guid guid) UIDManager(IOSSRead request, IOSSControlled holder) {
+            return UIDManagerInternal(request,holder).Result;
         }
         async Task<(bool status, long id)> EnsureWorkSpace(IOSSRead request) {
             if (!_cache.ContainsKey(request.Workspace.Cuid)) return (false, 0);
@@ -138,11 +138,11 @@ namespace Haley.Utils {
             return (true, nsId);
         }
 
-        async Task<(long id,Guid guid)> UIDManagerInternal(IOSSRead request) {
+        async Task<(long id,Guid guid)> UIDManagerInternal(IOSSRead request, IOSSControlled holder) {
             try {
                 //If we are in ParseMode, we still do all the process, but, store the file as is with Parsing information.
                 //For parse mode, let us not throw any exception.
-                (long, Guid) result = (0, Guid.Empty);
+                (long id, Guid guid) result = (0, Guid.Empty);
                 var ws = await EnsureWorkSpace(request);
                 if (!ws.status) return result;
                 var dir = await EnsureDirectory(request, ws.id);
@@ -185,6 +185,13 @@ namespace Haley.Utils {
                         result = (dvInfo.id, dvId);
                     }
                 }
+                
+                if (holder != null) {
+                    holder.ForceSetCuid(result.guid);
+                    holder.ForceSetId(result.id);
+                    holder.Version = version;
+                }
+
                 return result;
             } catch (Exception ex) {
                 _logger?.LogError(ex.Message);

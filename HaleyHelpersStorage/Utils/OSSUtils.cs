@@ -33,20 +33,17 @@ namespace Haley.Utils
             return input;
         }
 
-        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<(long id, Guid guid)> uidManager = null,bool throwExceptions = false) {
+        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<IOSSControlled,(long id, Guid guid)> uidManager = null,bool throwExceptions = false) {
             if (nObj == null || !nObj.TryValidate(out _)) return (string.Empty, string.Empty);
             //If We are dealing with virutal item. No need to think a lot, as there is no path.
             if (nObj.IsVirtual) return (nObj.Name, "");
-            (IOSSUID fs, IOSSUID db) uidInfo = (null, null);
+            IOSSUID uidInfo = null;
 
             if (nObj.ControlMode == OSSControlMode.None) {
                 nObj.SaveAsName = nObj.Name;
             } else {
-                if (nObj.DisplayName.TryPopulateControlledID(out uidInfo,nObj.ControlMode, parse_overwrite ?? nObj.ParseMode, uidManager, throwExceptions)) {
-                    nObj.SaveAsName = (nObj.ControlMode == OSSControlMode.Number) ? uidInfo.fs.Id.ToString() : uidInfo.fs.Guid.ToString("N");
-                    //Update the CUID and ID from the database
-                    nObj.ForceSetCuid(uidInfo.db.Guid);
-                    nObj.ForceSetId(uidInfo.db.Id);
+                if (nObj.DisplayName.TryPopulateControlledID(out uidInfo,nObj.ControlMode, parse_overwrite ?? nObj.ParseMode, uidManager,nObj, throwExceptions)) {
+                    nObj.SaveAsName = (nObj.ControlMode == OSSControlMode.Number) ? uidInfo.Id.ToString() : uidInfo.Guid.ToString("N");
                 }
             }
             
@@ -170,8 +167,8 @@ namespace Haley.Utils
             return value; //Dont' return the full path as we will be joining this result with other base path outside this function.
         }
        
-        public static bool TryPopulateControlledID(this string value, out (IOSSUID fs_save, IOSSUID db_stored) result, OSSControlMode cmode, OSSParseMode pmode , Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
-            result = (null, null);
+        public static bool TryPopulateControlledID(this string value, out IOSSUID result, OSSControlMode cmode, OSSParseMode pmode , Func<IOSSControlled, (long id, Guid guid)> idManager, IOSSControlled holder, bool throwExceptions = false) {
+            result = null;
             
             if (cmode == OSSControlMode.None) throw new Exception("The choosen control mode is wrong for generating or parsing the IDs. Please check.");
 
@@ -181,11 +178,11 @@ namespace Haley.Utils
             }
             string workingValue = Path.GetFileNameWithoutExtension(value); //WITHOUT EXTENSION, ONLY FILE NAME
            
-            var data = (pmode == OSSParseMode.Parse) ? HandleParseUID(workingValue, cmode, idManager, throwExceptions) : HandleGenerateUID(workingValue, cmode,idManager,throwExceptions);
+            var data = (pmode == OSSParseMode.Parse) ? HandleParseUID(workingValue, cmode, idManager,holder, throwExceptions) : HandleGenerateUID(workingValue, cmode,idManager,holder,throwExceptions);
 
             if (!data.status) return false; //Dont' proceed.
 
-            result = (new OSSUID(data.id,data.guid), new OSSUID(data.stored?.id ?? 0, data.stored?.guid ?? Guid.Empty));
+            result = new OSSUID(data.id, data.guid);
 
             if (cmode == OSSControlMode.Number && data.id < 1) {
                 if (throwExceptions) throw new ArgumentNullException("The final generated id is less than 1. Not acceptable. Please check the inputs.");
@@ -197,7 +194,7 @@ namespace Haley.Utils
             return true;
         }
         
-        static (bool status, long id, Guid guid, (long id, Guid guid)? stored) HandleParseUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+        static (bool status, long id, Guid guid) HandleParseUID(this string value, OSSControlMode cmode, Func<IOSSControlled,(long id, Guid guid)> idManager, IOSSControlled holder, bool throwExceptions = false) {
             //PARTIALLY MANAGED. IT SHOULD ALSO ALLOW ME TO STORE THE INFORMATION IN THE DATABASE??
 
             long resNumber = 0;
@@ -205,21 +202,21 @@ namespace Haley.Utils
             if (cmode == OSSControlMode.Number) {
                 if (!long.TryParse(value, out resNumber)) {
                     if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Manager status : {idManager != null}");
-                    return (false, resNumber, resGuid, null);
+                    return (false, resNumber, resGuid);
                 }
             } else if (cmode == OSSControlMode.Guid) {
                 if (value.IsValidGuid(out resGuid)) { //Parse
                 } else if (value.IsCompactGuid(out resGuid)) { //Parse
                 } else {
                     if (throwExceptions) throw new ArgumentNullException("Unable to parse the GUID from the given input. Please check the input.");
-                    return (false, resNumber, resGuid, null);
+                    return (false, resNumber, resGuid);
                 }
             }
-            var dbInfo = idManager?.Invoke(); //Just to get the stored info, if available 
-            return (true, resNumber, resGuid, dbInfo);
+            idManager?.Invoke(holder); //Just to get the stored info, if available 
+            return (true, resNumber, resGuid);
         }
         
-        static (bool status, long id, Guid guid, (long id, Guid guid)? stored) HandleGenerateUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+        static (bool status, long id, Guid guid) HandleGenerateUID(this string value, OSSControlMode cmode, Func<IOSSControlled,(long id, Guid guid)> idManager, IOSSControlled holder, bool throwExceptions = false) {
             long resNumber = 0;
             Guid resGuid = Guid.Empty;
             (long id, Guid guid)? dbInfo = null;
@@ -230,14 +227,14 @@ namespace Haley.Utils
                     resGuid = value.ToDBName().CreateGUID(HashMethod.Sha256);
                 } else {
                     if (throwExceptions) throw new ArgumentNullException("Id Generator should be provided to fetch and generate ID");
-                    return (false, resNumber, resGuid, null);
+                    return (false, resNumber, resGuid);
                 }
             } else {
-                dbInfo = idManager.Invoke();
+                dbInfo = idManager.Invoke(holder);
                 resNumber = dbInfo?.id ?? 0; //Regardless of whatever we generate, we set for both.
                 resGuid = dbInfo?.guid ?? Guid.Empty;
             }
-            return (true, resNumber, resGuid, dbInfo);
+            return (true, resNumber, resGuid);
         }
     }
 }
