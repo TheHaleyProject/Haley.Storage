@@ -13,7 +13,7 @@ namespace Haley.Models {
         public string SuffixFile { get; set; } = "f";
         public int SplitLengthNumber { get; set; } = 2; //For numbers
         public int DepthNumber { get; set; } = 0;
-        public int SplitLengthHash { get; set; } = 1; //For Hash
-        public int DepthHash { get; set; } = 10;
+        public int SplitLengthHash { get; set; } = 2; //For Hash
+        public int DepthHash { get; set; } = 7;
     }
 }

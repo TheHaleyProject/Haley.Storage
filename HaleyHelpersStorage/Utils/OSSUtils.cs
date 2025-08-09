@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using System.Xml.Schema;
 
 namespace Haley.Utils
@@ -32,46 +33,21 @@ namespace Haley.Utils
             return input;
         }
 
-        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<long> idGenerator = null, Func<Guid> guidGenerator = null,bool throwExceptions = false) {
+        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<(long id, Guid guid)> uidManager = null,bool throwExceptions = false) {
             if (nObj == null || !nObj.TryValidate(out _)) return (string.Empty, string.Empty);
-            string result = string.Empty;
-            long objId = 0;
-            Guid objGuid = Guid.Empty;
-
             //If We are dealing with virutal item. No need to think a lot, as there is no path.
             if (nObj.IsVirtual) return (nObj.Name, "");
+            (IOSSUID fs, IOSSUID db) uidInfo = (null, null);
 
-            switch (nObj.ControlMode) {
-                case OSSControlMode.None:
-                    nObj.SaveAsName = nObj.Name;
-                break;
-                case OSSControlMode.Number:
-                if (nObj.DisplayName.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode,generator: idGenerator, throwExceptions)) {
-                    nObj.SaveAsName = objId.ToString();
+            if (nObj.ControlMode == OSSControlMode.None) {
+                nObj.SaveAsName = nObj.Name;
+            } else {
+                if (nObj.DisplayName.TryPopulateControlledID(out uidInfo,nObj.ControlMode, parse_overwrite ?? nObj.ParseMode, uidManager, throwExceptions)) {
+                    nObj.SaveAsName = (nObj.ControlMode == OSSControlMode.Number) ? uidInfo.fs.Id.ToString() : uidInfo.fs.Guid.ToString("N");
                 }
-                break;
-                case OSSControlMode.Guid:
-                 if (nObj.DisplayName.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,generator:guidGenerator, throwExceptions)) {
-                    nObj.SaveAsName = objGuid.ToString("N");
-                }
-                break;
-                case OSSControlMode.Both:
-                //In case of both, the problem is, we need to first ensure, we are able to parse them.. and then only go ahead with generating.
-                //Focus on parsing first and then if doesn't work, hten jump to generate. Even in that case we need to see through thenend.
-                if (nObj.Name.TryPopulateControlledID(out objId, OSSParseMode.Parse, null, false)) {
-                    nObj.SaveAsName = objId.ToString();
-                } else if(nObj.Name.TryPopulateControlledGUID(out objGuid, OSSParseMode.Parse,null, false)){
-                    nObj.SaveAsName = objGuid.ToString("N");
-                } else if (nObj.DisplayName.TryPopulateControlledID(out objId, parse_overwrite ?? nObj.ParseMode, idGenerator, false)) {
-                    //Try with original parsing mode, ,may be we are asked to generte. We dont' know;
-                    nObj.SaveAsName = objId.ToString();
-                } else if (nObj.DisplayName.TryPopulateControlledGUID(out objGuid, parse_overwrite ?? nObj.ParseMode,guidGenerator, throwExceptions)) {
-                    nObj.SaveAsName = objGuid.ToString("N");
-                }
-                break;
             }
             
-            result = PreparePath(nObj.SaveAsName, splitProvider, nObj.ControlMode);
+            var result = PreparePath(nObj.SaveAsName, splitProvider, nObj.ControlMode);
             
             //If extension is missing, check for extension. (only for controlled paths, extension would be missing)
             if (nObj.ControlMode != OSSControlMode.None) {
@@ -137,15 +113,15 @@ namespace Haley.Utils
             if (!Directory.Exists(basePath)) throw new DirectoryNotFoundException("Base directory not found. Please ensure it is present");
             if (string.IsNullOrWhiteSpace(req.TargetPath)) {
                 //Now we have two items to build. Directory path and file path. May be we are just building a directory here.
-                req.TargetPath = basePath;
+                req.SetTargetPath(basePath);
                 if (input.Folder != null && !input.Folder.IsVirutal) {
-                    req.TargetPath = Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess,readonlyMode));
+                    req.SetTargetPath(Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess,readonlyMode)));
                 }
                 if (input.File != null && forFile) {
-                    req.TargetPath = Path.Combine(req.TargetPath, input.File.FetchRoutePath(req.TargetPath,true, allowRootAccess, readonlyMode));
+                    req.SetTargetPath(Path.Combine(req.TargetPath, input.File.FetchRoutePath(req.TargetPath,true, allowRootAccess, readonlyMode)));
                 }
             } else {
-                req.TargetPath = Path.Combine(basePath, req.TargetPath);
+                req.SetTargetPath(Path.Combine(basePath, req.TargetPath));
             }
 
             //What if, the user provided no value and we end up with only the Basepath.
@@ -198,70 +174,71 @@ namespace Haley.Utils
             return value; //Dont' return the full path as we will be joining this result with other base path outside this function.
         }
 
-        public static bool TryPopulateControlledGUID(this string value, out Guid result, OSSParseMode pmode, Func<Guid> generator = null, bool throwExceptions = false) {
-            result = Guid.Empty;
-            //Check if the value is already in the format of a hash.
-            //This method is not responsible for removing the Hyphens, if found.
-            if (string.IsNullOrWhiteSpace(value)) {
-                if (throwExceptions) throw new ArgumentNullException("Unable to generate the GUID. The provided input is null or empty.");
-                return false;
-            }
-            Guid guid = Guid.Empty;
-            string workingValue = Path.GetFileNameWithoutExtension(value); //WITHOUT EXTENSION, ONLY FILE NAME
-            switch (pmode) {
-                case OSSParseMode.Parse:
-                    //Parse Mode : //Check if currently, the value is hashed or not.
-                    
-                    if (workingValue.IsValidGuid(out guid)) { //Parse
-                    } else if (workingValue.IsCompactGuid(out guid)) { //Parse
-                    } else {
-                        if (throwExceptions) throw new ArgumentNullException("Unable to parse the GUID from the given input. Please check the input.");
-                        return false;
-                    }
-                break;
-                case OSSParseMode.Generate:
-                //Regardless of what is provided, we generate the hash based GUID.
-                if (generator != null) {
-                    guid = generator.Invoke(); //We need with the extension so that we can check it properly in the system.
-                } else {
-                    guid = workingValue.ToDBName().CreateGUID(HashMethod.Sha256);
-                }
-                break;
-            }
+        static (bool status,long id,Guid guid,(long id,Guid guid)? stored) HandleParseUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+            //PARTIALLY MANAGED. IT SHOULD ALSO ALLOW ME TO STORE THE INFORMATION IN THE DATABASE??
 
-            result = guid;
-            if (result == Guid.Empty ) {
-                if (throwExceptions) throw new ArgumentNullException("The final generated guid is an empty value. Not acceptable. Please check the inputs.");
-                return false;
+            long resNumber = 0;
+            Guid resGuid = Guid.Empty;
+            if (cmode == OSSControlMode.Number) {
+                if (!long.TryParse(value, out resNumber)) {
+                    if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Manager status : {idManager != null}");
+                    return (false,resNumber,resGuid,null);
+                }
+            } else if (cmode == OSSControlMode.Guid) {
+                if (value.IsValidGuid(out resGuid)) { //Parse
+                } else if (value.IsCompactGuid(out resGuid)) { //Parse
+                } else {
+                    if (throwExceptions) throw new ArgumentNullException("Unable to parse the GUID from the given input. Please check the input.");
+                    return (false, resNumber, resGuid, null);
+                }
             }
-            return true;
+            var dbInfo = idManager?.Invoke(); //Just to get the stored info, if available 
+            return (true, resNumber, resGuid, dbInfo);
         }
-        public static bool TryPopulateControlledID(this string value, out long result, OSSParseMode pmode , Func<long> generator = null,bool throwExceptions = false) {
-            result = 0;
+
+        static (bool status, long id, Guid guid, (long id, Guid guid)? stored) HandleGenerateUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+            long resNumber = 0;
+            Guid resGuid = Guid.Empty;
+            (long id, Guid guid)? dbInfo = null;
+
+            if (idManager == null) {
+                if (cmode == OSSControlMode.Guid) {
+                    //Only for GUID, we can autogenerate the hash based on the input. So, we can go ahead and create it.
+                    resGuid = value.ToDBName().CreateGUID(HashMethod.Sha256);
+                } else {
+                    if (throwExceptions) throw new ArgumentNullException("Id Generator should be provided to fetch and generate ID");
+                    return (false, resNumber, resGuid, null);
+                }
+            } else {
+                dbInfo = idManager.Invoke();
+                resNumber = dbInfo?.id ?? 0; //Regardless of whatever we generate, we set for both.
+                resGuid = dbInfo?.guid ?? Guid.Empty;
+            }
+            return (true, resNumber, resGuid, dbInfo);
+        }
+
+        public static bool TryPopulateControlledID(this string value, out (IOSSUID fs_save, IOSSUID db_stored) result, OSSControlMode cmode, OSSParseMode pmode , Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+            result = (null, null);
+            
+            if (cmode == OSSControlMode.None) throw new Exception("The choosen control mode is wrong for generating or parsing the IDs. Please check.");
+
             if (string.IsNullOrWhiteSpace(value)) {
                 if (throwExceptions) throw new ArgumentNullException("Unable to generate the ID. The provided input is null or empty.");
                 return false;
             }
             string workingValue = Path.GetFileNameWithoutExtension(value); //WITHOUT EXTENSION, ONLY FILE NAME
-            switch (pmode) {
-                case OSSParseMode.Parse:
-                    //For parse mode, we first try to parse.
-                if (!long.TryParse(workingValue, out result)) {
-                    if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Generator status : {generator != null}");
-                    return false;
-                }
-                break;
-                case OSSParseMode.Generate:
-                if (generator == null) {
-                    if (throwExceptions) throw new ArgumentNullException("Id Generator should be provided to fetch and generate ID");
-                    return false;
-                }
-                
-                result = generator.Invoke();
-                break;
-            }
-            if (result < 1) {
+           
+            var data = (pmode == OSSParseMode.Parse) ? HandleParseUID(workingValue, cmode, idManager, throwExceptions) : HandleGenerateUID(workingValue, cmode,idManager,throwExceptions);
+
+            if (!data.status) return false; //Dont' proceed.
+
+            result = (new OSSUID(data.id,data.guid), new OSSUID(data.stored?.id ?? 0, data.stored?.guid ?? Guid.Empty));
+
+            if (cmode == OSSControlMode.Number && data.id < 1) {
                 if (throwExceptions) throw new ArgumentNullException("The final generated id is less than 1. Not acceptable. Please check the inputs.");
+                return false;
+            } else if (cmode == OSSControlMode.Guid && data.guid == Guid.Empty) {
+                if (throwExceptions) throw new ArgumentNullException("The final generated guid is an empty value. Not acceptable. Please check the inputs.");
                 return false;
             }
             return true;

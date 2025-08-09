@@ -30,7 +30,7 @@ namespace Haley.Models {
             PasswordHash = password;
             SigningKey = signingkey;
             EncryptKey = encryptkey;
-            Cuid = Guid; //For OSSClient
+            ForceSetCuid(Guid);
         }
     }
 }

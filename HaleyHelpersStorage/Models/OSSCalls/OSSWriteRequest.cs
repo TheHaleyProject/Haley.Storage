@@ -40,5 +40,11 @@ namespace Haley.Models {
             this.MapProperties(cloned);
             return cloned ;
         }
+
+        public IOSSWrite SetFileOriginalName(string name) {
+            if (string.IsNullOrWhiteSpace(name)) return this;
+            FileOriginalName = name;
+            return this;
+        }
     }
 }

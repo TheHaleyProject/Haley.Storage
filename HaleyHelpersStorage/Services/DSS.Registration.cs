@@ -12,7 +12,7 @@ namespace Haley.Services {
         public Task<IFeedback> RegisterModule(string module_name=null, string client_name = null) {
             return RegisterModule(new OSSControlled(module_name), new OSSControlled(client_name));
         }
-        public Task<IFeedback> RegisterWorkSpace(string workspace_name=null, string client_name = null, string module_name = null, OSSControlMode content_control = OSSControlMode.Both, OSSParseMode content_pmode = OSSParseMode.Generate, bool is_virtual = false) {
+        public Task<IFeedback> RegisterWorkSpace(string workspace_name=null, string client_name = null, string module_name = null, OSSControlMode content_control = OSSControlMode.Number, OSSParseMode content_pmode = OSSParseMode.Generate, bool is_virtual = false) {
             return RegisterWorkSpace(new OSSControlled(workspace_name, OSSControlMode.Guid, OSSParseMode.Generate, isVirtual:is_virtual), new OSSControlled(client_name), new OSSControlled(module_name), content_control, content_pmode);
         }
 
@@ -90,7 +90,7 @@ namespace Haley.Services {
             await RegisterWorkSpace(new OSSControlled(null, OSSControlMode.Guid, OSSParseMode.Generate), client, module);
             return result;
         }
-        public async Task<IFeedback> RegisterWorkSpace(IOSSControlled wspace, IOSSControlled client, IOSSControlled module, OSSControlMode content_control = OSSControlMode.None, OSSParseMode content_pmode = OSSParseMode.Parse) {
+        public async Task<IFeedback> RegisterWorkSpace(IOSSControlled wspace, IOSSControlled client, IOSSControlled module, OSSControlMode content_control = OSSControlMode.Number, OSSParseMode content_pmode = OSSParseMode.Generate) {
             string msg = string.Empty;
             if (!wspace.TryValidate(out msg)) throw new Exception(msg);
             if (!client.TryValidate(out msg)) throw new Exception(msg);

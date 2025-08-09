@@ -19,9 +19,19 @@ namespace Haley.Services {
                 length = 0; depth = 0;
                 break;
                 case OSSComponent.WorkSpace:
-                var suffixAddon = input.ControlMode == OSSControlMode.None ? "u" : "m";
+                //Only if the parase mode is generate, it is managed.
+                string suffixAddon =string.Empty;
+                if (input.ControlMode == OSSControlMode.None) {
+                    suffixAddon = "u"; //Fully unmanagaed.
+                } else {
+                    if (input.ParseMode == OSSParseMode.Generate) {
+                        suffixAddon = "f"; //Fully unmanagaed. //Ids are generated from the database and everthing is controlled there.
+                    } else {
+                        suffixAddon = "p"; //Partially managed. Folder structures are properly managed with split, but, will not store any other file information. File conflicts and other things are possible. No directory structure allowed.
+                    }
+                }
                 suffix = suffixAddon + Config.SuffixWorkSpace;
-                length = 2; depth = 2;
+                length = 1; depth = 5;
                 break;
                 case OSSComponent.File:
                 suffix = Config.SuffixFile;
@@ -102,7 +112,7 @@ namespace Haley.Services {
         }
         public void ProcessFileRoute(IOSSRead input) {
             //The last storage route should be in the format of a file
-            if (input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {
+            if (input != null &&  input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {
                 //We are trying to upload a file but the last storage route is not in the format of a file.
                 //We need to see if the filestream is present and take the name from there.
                 //Priority for the name comes from TargetName
@@ -115,30 +125,31 @@ namespace Haley.Services {
                         targetFileName = Path.GetFileName(inputW.FileOriginalName);
                     } else if (inputW.FileStream != null && inputW.FileStream is FileStream fs) {
                         targetFileName = Path.GetFileName(fs.Name);
+                        if (string.IsNullOrWhiteSpace(inputW.FileOriginalName)) inputW.SetFileOriginalName(targetFileName);
                     }
                 } else {
                     throw new ArgumentNullException("For the given file no save name is specified.");
                 }
 
-                //Now, this targetFileName, may or may not be split based on what was defined in the module.
-                //Check the module info.
-                if (Indexer.TryGetComponentInfo<OSSWorkspace>(OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace), out OSSWorkspace wInfo)) {
-                    //TODO: USE THE INDEXER TO GET THE PATH FOR THIS SPECIFIC FILE WITH MODULE AND CLIENT NAME.
-                    //TODO: IF THE PATH IS OBTAINED, THEN JUST JOIN THE PATHS.
-                    targetFilePath = OSSUtils.GenerateFileSystemSavePath(
-                        new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse,isVirtual:false),
-                        idGenerator: () => { return Indexer?.IDGenerator(input) ?? 0; },
-                        guidGenerator: () => { return Indexer?.GUIDGenerator(input) ?? Guid.Empty; },
-                        splitProvider: SplitProvider, 
-                        suffix: Config.SuffixFile, 
-                        throwExceptions: true)
-                        .path;
-                } else {
-                    targetFilePath = targetFileName.ToDBName(); //Just lower it 
-                }
+                if (string.IsNullOrWhiteSpace(input.TargetName)) input.SetTargetName(targetFileName);
+                var workspaceCuid = OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace);
+                //If a component information is not avaialble for the workspace, we should not proceed.
+                if (!Indexer.TryGetComponentInfo<OSSWorkspace>(workspaceCuid, out OSSWorkspace wInfo)) throw new Exception($@"Unable to find the workspace information for the given input. Workspace name : {input.Workspace.Name} - Cuid : {workspaceCuid}.");
 
-                if (input.File == null)  input.File = new OSSFileRoute(targetFileName, targetFilePath);
+                //TODO: USE THE INDEXER TO GET THE PATH FOR THIS SPECIFIC FILE WITH MODULE AND CLIENT NAME.
+                //TODO: IF THE PATH IS OBTAINED, THEN JUST JOIN THE PATHS.
+                var holder = new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse, isVirtual: false);
+                targetFilePath = OSSUtils.GenerateFileSystemSavePath(
+                    holder,
+                    uidManager: () => { return Indexer?.UIDManager(input) ?? (0,Guid.Empty); },
+                    splitProvider: SplitProvider,
+                    suffix: Config.SuffixFile,
+                    throwExceptions: true)
+                    .path;
+
+                if (input.File == null) input.File = new OSSFileRoute(targetFileName, targetFilePath);
                 input.File.Path = targetFilePath;
+                if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = targetFileName;
             }
         }
 

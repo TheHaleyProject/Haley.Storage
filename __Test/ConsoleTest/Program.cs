@@ -7,6 +7,8 @@ using Haley.Abstractions;
 using Haley.Models;
 using Haley.Utils;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 //new Testing().ConfigTest();
 await new Testing().StorageTest();
@@ -136,6 +138,9 @@ class Testing {
     }
     public async Task StorageTest() {
         try {
+            var sw = new Stopwatch();
+            Console.WriteLine($@"Starting the service.");
+            sw.Start();
             var _agw = new AdapterGateway() { ThrowCRUDExceptions = true }; //Only for testing.
             var dss = new DiskStorageService(_agw, "mss_db") { ThrowExceptions = true};
             await dss.RegisterClient(new OSSControlled("bcde"));
@@ -151,14 +156,31 @@ class Testing {
             await dss.RegisterModule(new OSSControlled("test", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterWorkSpace(null,"bcde","lingam");
             await dss.RegisterWorkSpace("drive","arya","lingam");
+            sw.Stop();
+            Console.WriteLine($@"Registered all modules & workspaces in {sw.Elapsed.TotalSeconds}");
+          
+            Console.WriteLine($@"Starting the File copy.");
+            sw.Reset();
+            sw.Start();
+            //for (int i = 0; i < 4; i++) {
+            //    var status = await dss.Upload(new OSSWriteRequest("daep","bcde") {
+            //        FileStream = new FileStream(@"C:\Users\tmp168\Downloads\PNCL Data Compliance - Frame 1(4).jpg", FileMode.Open, FileAccess.Read),
+            //        ResolveMode = OSSResolveMode.Revise,
+            //        TargetName = @"C:\Users\tmp168\Downloads\response_1751620873480.jpg",
+            //    }.SetComponent(new OSSControlled("common",isVirtual:true),OSSComponent.WorkSpace));
+            //    Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
+            //}
 
-            for (int i = 0; i < 4; i++) {
-                var status = await dss.Upload(new OSSWriteRequest("daep","bcde") {
-                    FileStream = new FileStream(@"C:\Users\tmp168\Downloads\PNCL Data Compliance - Frame 1(4).jpg", FileMode.Open, FileAccess.Read),
-                    ResolveMode = OSSResolveMode.Revise,
-                    TargetName = @"C:\Users\tmp168\Downloads\response_1751620873480.jpg",
-                }.SetComponent(new OSSControlled("common",isVirtual:true),OSSComponent.WorkSpace));
-                Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
+            var dirpath = @"C:\Users\tmp168\Pictures";
+
+            if (Directory.Exists(dirpath)) {
+                foreach (var file in Directory.GetFiles(dirpath)) {
+                    var status = await dss.Upload(new OSSWriteRequest("daep", "bcde") {
+                        FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
+                        ResolveMode = OSSResolveMode.Revise
+                    }.SetComponent(new OSSControlled("common", isVirtual: true), OSSComponent.WorkSpace));
+                    Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
+                }
             }
 
             //var dld = await dss.Download(new OSSReadRequest() {
@@ -166,6 +188,8 @@ class Testing {
             //    Module = new OSSControlled("contest", OSSControlMode.Guid),
             //    TargetName = "response_1751620873480.jpg"
             //});
+            sw.Stop();
+            Console.WriteLine($@"File upload completed. {sw.Elapsed.TotalSeconds}");
             Console.ReadKey();
 
         } catch (Exception ex) {

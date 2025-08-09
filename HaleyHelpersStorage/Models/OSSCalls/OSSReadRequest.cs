@@ -4,8 +4,8 @@ using Haley.Enums;
 
 namespace Haley.Models {
     public class OSSReadRequest : IOSSRead {
-        public string TargetPath { get; set; }
-        public string TargetName { get; set; }
+        public string TargetPath { get; protected set; }
+        public string TargetName { get; protected set; }
         public IOSSControlled Client { get; private set; } 
         public IOSSControlled Module { get; private set; }
         public IOSSControlled Workspace { get; private set; } 
@@ -31,6 +31,19 @@ namespace Haley.Models {
             if (Module != null) Module.UpdateCUID(Client.DisplayName);
             if (Workspace != null) Workspace.UpdateCUID(Client.DisplayName, Module?.DisplayName);
         }
+
+        public IOSSRead SetTargetName(string name) {
+            if (string.IsNullOrWhiteSpace(name)) return this;
+            TargetName = name;
+            return this;
+        }
+
+        public IOSSRead SetTargetPath(string path) {
+            if (string.IsNullOrWhiteSpace(path)) return this;
+            TargetPath = path;
+            return this;
+        }
+
         public OSSReadRequest() :this (null,null,null){ }
         public OSSReadRequest(string client_name) :this(client_name,null,null) { }
         public OSSReadRequest(string client_name,string module_name) :this(client_name, module_name, null) { }
@@ -38,7 +51,7 @@ namespace Haley.Models {
         public  OSSReadRequest(string client_name, string module_name, string workspace_name, bool isWsVirtual = false) {
             Client = new OSSControlled(client_name);
             Module = new OSSControlled(module_name).UpdateCUID(Client.DisplayName,module_name);
-            Workspace = new OSSControlled(workspace_name,OSSControlMode.Both,OSSParseMode.Generate,isVirtual:isWsVirtual).UpdateCUID(Client.DisplayName,Module.DisplayName);
+            Workspace = new OSSControlled(workspace_name).UpdateCUID(Client.DisplayName,Module.DisplayName); //Here nothing matters, because it is an input request. // We need to fetch the information from database and then update this workspace information.
         }
     }
 }

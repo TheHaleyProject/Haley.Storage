@@ -44,12 +44,8 @@ namespace Haley.Utils {
 
         ConcurrentDictionary<string, IOSSDirectory> _cache = new ConcurrentDictionary<string, IOSSDirectory>();
         public bool ThrowExceptions { get; set; }
-        public long IDGenerator(IOSSRead request) {
-            return UIDGeneratorInternal(request).Result.id;
-        }
-
-        public Guid GUIDGenerator(IOSSRead request) {
-            return UIDGeneratorInternal(request).Result.guid;
+        public (long id, Guid guid) UIDManager(IOSSRead request) {
+            return UIDManagerInternal(request).Result;
         }
         async Task<(bool status, long id)> EnsureWorkSpace(IOSSRead request) {
             if (!_cache.ContainsKey(request.Workspace.Cuid)) return (false, 0);
@@ -142,8 +138,10 @@ namespace Haley.Utils {
             return (true, nsId);
         }
 
-        async Task<(long id,Guid guid)> UIDGeneratorInternal(IOSSRead request) {
+        async Task<(long id,Guid guid)> UIDManagerInternal(IOSSRead request) {
             try {
+                //If we are in ParseMode, we still do all the process, but, store the file as is with Parsing information.
+                //For parse mode, let us not throw any exception.
                 (long, Guid) result = (0, Guid.Empty);
                 var ws = await EnsureWorkSpace(request);
                 if (!ws.status) return result;
@@ -190,7 +188,7 @@ namespace Haley.Utils {
                 return result;
             } catch (Exception ex) {
                 _logger?.LogError(ex.Message);
-                if (ThrowExceptions) throw ex;
+                if (ThrowExceptions) throw ex; //For Parse mode, let us not throw any exceptions.
                 return (0, Guid.Empty);
             }
         }
@@ -268,9 +266,7 @@ namespace Haley.Utils {
         async Task<IFeedback> ValidateAndCache(string query, string title, IOSSDirectory info, Func<IOSSDirectory, Task> preProcess, params (string key, object value)[] parameters) {
             var result = await _agw.Scalar(new AdapterArgs(_key) { Query = query }, parameters);
             if (result != null && result.IsNumericType()) {
-                if (long.TryParse(result.ToString(), out var id)) {
-                    info.Id = id;
-                }
+                if (long.TryParse(result.ToString(), out var id)) info.ForceSetId(id);
                 //Every time a client is sucessfully done. We validate if it is present or not.
                 await AddComponentCache(info, preProcess);
                 return new Feedback(true, $@"{title} - {info.Name} Indexed.") { Result = id };

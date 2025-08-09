@@ -10,7 +10,7 @@ namespace Haley.Models {
     public class OSSInfo : IOSSInfo {
         public const string DEFAULTNAME = "default";
         public string Name { get; private set; }
-        public long Id { get; set; }
+        public long Id { get; private set; }
         private string _displayName;
         public string DisplayName {
             get { return _displayName; }
@@ -29,12 +29,6 @@ namespace Haley.Models {
         public virtual bool TryValidate(out string message) {
             return ValidateInternal(out message);
         }
-
-        //public IOSSInfo SetCUID(string uid) {
-        //    if (string.IsNullOrWhiteSpace(uid) || !uid.IsCompactGuid(out _)) return this;
-        //    Cuid = uid;
-        //    return this;
-        //}
 
         bool ValidateInternal(out string message) {
             message = string.Empty;
@@ -63,9 +57,25 @@ namespace Haley.Models {
             return this;
         }
 
+        public IOSSInfo ForceSetId(long setId) {
+            Id = setId;
+            return this;
+        }
+
+        public IOSSInfo ForceSetCuid(string guid) {
+            if (string.IsNullOrWhiteSpace(guid)) throw new Exception("Cannot set CUID with empty value");
+            var res = System.Guid.Empty;
+            if (guid.IsCompactGuid(out res) || guid.IsValidGuid(out res)) {
+                Cuid = res.ToString("N");
+            } else {
+                throw new Exception("Cannot set CUID. Input should be in a proper GUID format.");
+            }
+            return this;
+        }
+
         public string Guid { get; private set; } //Sha256 generated from the name and a guid is created from there.
-        [IgnoreMapping]
-        public string Cuid { get; protected set; } //Collision resistant Unique identifier
+        [IgnoreMapping] //Important.. no should map this.
+        public string Cuid { get; private set; } //Collision resistant Unique identifier
         public OSSInfo(string displayName) {
             DisplayName = displayName ?? DEFAULTNAME;
         }
