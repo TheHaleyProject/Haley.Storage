@@ -85,12 +85,16 @@ namespace Haley.Services {
                     result.Message = "Uploaded."; //For skip also, we will return true (but object will exists)
                 }
                 result.Status = true;
-                result.Size = input.FileStream.Length; //storage size in bytes.
                 if (input.File != null) result.SetResult(input.File);
-
             } catch (Exception ex) {
                 result.Message = ex.Message;
                 result.Status = false;
+            } finally {
+                if (input != null && Indexer != null && input.Module != null && input.File != null) {
+                    //We try to make a call to the db to update the information about the file version info.
+                    var upInfo = await Indexer.UpdateDocumentInfo(input.Module.Cuid, input.File, input.TargetName);
+                    Console.WriteLine($@"Document version update status: {upInfo.Status} {Environment.NewLine} Result : {upInfo.Result.ToString()}");
+                }
             }
             return result;
         }

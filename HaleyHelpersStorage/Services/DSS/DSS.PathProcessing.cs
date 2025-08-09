@@ -112,7 +112,7 @@ namespace Haley.Services {
         }
         public void ProcessFileRoute(IOSSRead input) {
             //The last storage route should be in the format of a file
-            if (input != null &&  input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {
+            if (input != null &&  (input.File == null || string.IsNullOrWhiteSpace(input.File.Path))) {
                 //We are trying to upload a file but the last storage route is not in the format of a file.
                 //We need to see if the filestream is present and take the name from there.
                 //Priority for the name comes from TargetName
@@ -141,7 +141,7 @@ namespace Haley.Services {
                 var holder = new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse, isVirtual: false);
                 targetFilePath = OSSUtils.GenerateFileSystemSavePath(
                     holder,
-                    uidManager: (h) => { return Indexer?.UIDManager(input,h) ?? (0,Guid.Empty); },
+                    uidManager: (h) => { return Indexer?.RegisterDocuments(input,h) ?? (0,Guid.Empty); },
                     splitProvider: SplitProvider,
                     suffix: Config.SuffixFile,
                     throwExceptions: true)
@@ -155,6 +155,9 @@ namespace Haley.Services {
                 if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = targetFileName;
                 if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid = holder.Cuid;
                 if (input.File.Id < 1) input.File.Id = holder.Id;
+                if (input is IOSSWrite writeInp) {
+                    input.File.Size = writeInp.FileStream?.Length ?? 0;
+                }
             }
         }
 

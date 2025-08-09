@@ -86,17 +86,20 @@ namespace Haley.Internal {
 
             public class DOCUMENT {
                 public const string EXISTS = $@"select doc.id , doc.cuid as uid from document as doc where doc.parent = {PARENT} and doc.name = {NAME};";
-                public const string EXISTS_BY_CUID = $@"select doc.id , doc.cuid as uid from document as doc where doc.cuid = {CUID};";
+                public const string EXISTS_BY_CUID = $@"select doc.id from document as doc where doc.cuid = {CUID};";
                 public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
                 public const string INSERT_INFO = $@"insert into doc_info (file,display_name) values ({PARENT}, {DNAME}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);";
             }
             
             public class DOCVERSION {
                 public const string EXISTS = $@"select dv.id , dv.cuid as uid from doc_version as dv where dv.parent = {PARENT} and dv.ver = {VERSION};";
-                public const string EXISTS_BY_CUID = $@"select dv.id , dv.cuid from doc_version as dv where dv.cuid = {CUID};";
+                public const string EXISTS_BY_CUID = $@"select dv.id from doc_version as dv where dv.cuid = {CUID};";
+                public const string EXISTS_BY_ID = $@"select 1 from doc_version as dv where dv.id = {ID};";
                 public const string INSERT = $@"insert ignore into doc_version (parent,ver) values({PARENT},{VERSION});";
-                public const string INSERT_INFO = $@"insert into version_info (saveas_name,path) values({SAVENAME},{PATH});";
                 public const string FIND_LATEST = $@"select MAX(dv.ver) from doc_version as dv where dv.parent = {PARENT};";
+                public const string INSERT_INFO = $@"insert into version_info (id, saveas_name,path,size) values({ID},{SAVENAME},{PATH},{SIZE}) ON DUPLICATE KEY UPDATE saveas_name=VALUES(saveas_name),path=VALUES(path),size=VALUES(path);";
+                public const string GET_INFO = $@"select * from version_info where id = {ID};";
+
             }
         }
     }
