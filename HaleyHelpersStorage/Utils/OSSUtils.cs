@@ -44,6 +44,9 @@ namespace Haley.Utils
             } else {
                 if (nObj.DisplayName.TryPopulateControlledID(out uidInfo,nObj.ControlMode, parse_overwrite ?? nObj.ParseMode, uidManager, throwExceptions)) {
                     nObj.SaveAsName = (nObj.ControlMode == OSSControlMode.Number) ? uidInfo.fs.Id.ToString() : uidInfo.fs.Guid.ToString("N");
+                    //Update the CUID and ID from the database
+                    nObj.ForceSetCuid(uidInfo.db.Guid);
+                    nObj.ForceSetId(uidInfo.db.Id);
                 }
             }
             
@@ -132,13 +135,6 @@ namespace Haley.Utils
             return req.TargetPath;
         }
 
-        static string JoinBasePaths(List<string> paths) {
-            if (paths == null || paths.Count < 1) {
-                throw new ArgumentNullException("Base paths not found. Please provide a valid base path to proceed.");
-            }
-           return Path.Combine(paths.ToArray()); //Will it be in proper order??
-        }
-
         static string FetchRoutePath(this IOSSRoute route, string basePath,bool finalDestination, bool allow_root_access, bool readonlyMode) {
             //SEND ONLY THE PATH FROM THE ROUTE.. NOT THE FULL PATH INCLUDING THE BASE PATH.
             //THE BASE PATH EXISTS HERE ONLY FOR TESTING PURPOSE.
@@ -173,50 +169,7 @@ namespace Haley.Utils
             if (!path.StartsWith(basePath)) throw new ArgumentOutOfRangeException("The generated path is not accessible. Please check the inputs.");
             return value; //Dont' return the full path as we will be joining this result with other base path outside this function.
         }
-
-        static (bool status,long id,Guid guid,(long id,Guid guid)? stored) HandleParseUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
-            //PARTIALLY MANAGED. IT SHOULD ALSO ALLOW ME TO STORE THE INFORMATION IN THE DATABASE??
-
-            long resNumber = 0;
-            Guid resGuid = Guid.Empty;
-            if (cmode == OSSControlMode.Number) {
-                if (!long.TryParse(value, out resNumber)) {
-                    if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Manager status : {idManager != null}");
-                    return (false,resNumber,resGuid,null);
-                }
-            } else if (cmode == OSSControlMode.Guid) {
-                if (value.IsValidGuid(out resGuid)) { //Parse
-                } else if (value.IsCompactGuid(out resGuid)) { //Parse
-                } else {
-                    if (throwExceptions) throw new ArgumentNullException("Unable to parse the GUID from the given input. Please check the input.");
-                    return (false, resNumber, resGuid, null);
-                }
-            }
-            var dbInfo = idManager?.Invoke(); //Just to get the stored info, if available 
-            return (true, resNumber, resGuid, dbInfo);
-        }
-
-        static (bool status, long id, Guid guid, (long id, Guid guid)? stored) HandleGenerateUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
-            long resNumber = 0;
-            Guid resGuid = Guid.Empty;
-            (long id, Guid guid)? dbInfo = null;
-
-            if (idManager == null) {
-                if (cmode == OSSControlMode.Guid) {
-                    //Only for GUID, we can autogenerate the hash based on the input. So, we can go ahead and create it.
-                    resGuid = value.ToDBName().CreateGUID(HashMethod.Sha256);
-                } else {
-                    if (throwExceptions) throw new ArgumentNullException("Id Generator should be provided to fetch and generate ID");
-                    return (false, resNumber, resGuid, null);
-                }
-            } else {
-                dbInfo = idManager.Invoke();
-                resNumber = dbInfo?.id ?? 0; //Regardless of whatever we generate, we set for both.
-                resGuid = dbInfo?.guid ?? Guid.Empty;
-            }
-            return (true, resNumber, resGuid, dbInfo);
-        }
-
+       
         public static bool TryPopulateControlledID(this string value, out (IOSSUID fs_save, IOSSUID db_stored) result, OSSControlMode cmode, OSSParseMode pmode , Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
             result = (null, null);
             
@@ -242,6 +195,49 @@ namespace Haley.Utils
                 return false;
             }
             return true;
+        }
+        
+        static (bool status, long id, Guid guid, (long id, Guid guid)? stored) HandleParseUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+            //PARTIALLY MANAGED. IT SHOULD ALSO ALLOW ME TO STORE THE INFORMATION IN THE DATABASE??
+
+            long resNumber = 0;
+            Guid resGuid = Guid.Empty;
+            if (cmode == OSSControlMode.Number) {
+                if (!long.TryParse(value, out resNumber)) {
+                    if (throwExceptions) throw new ArgumentNullException($@"The provided input is not in the number format. Unable to parse a long value. ID Manager status : {idManager != null}");
+                    return (false, resNumber, resGuid, null);
+                }
+            } else if (cmode == OSSControlMode.Guid) {
+                if (value.IsValidGuid(out resGuid)) { //Parse
+                } else if (value.IsCompactGuid(out resGuid)) { //Parse
+                } else {
+                    if (throwExceptions) throw new ArgumentNullException("Unable to parse the GUID from the given input. Please check the input.");
+                    return (false, resNumber, resGuid, null);
+                }
+            }
+            var dbInfo = idManager?.Invoke(); //Just to get the stored info, if available 
+            return (true, resNumber, resGuid, dbInfo);
+        }
+        
+        static (bool status, long id, Guid guid, (long id, Guid guid)? stored) HandleGenerateUID(this string value, OSSControlMode cmode, Func<(long id, Guid guid)> idManager, bool throwExceptions = false) {
+            long resNumber = 0;
+            Guid resGuid = Guid.Empty;
+            (long id, Guid guid)? dbInfo = null;
+
+            if (idManager == null) {
+                if (cmode == OSSControlMode.Guid) {
+                    //Only for GUID, we can autogenerate the hash based on the input. So, we can go ahead and create it.
+                    resGuid = value.ToDBName().CreateGUID(HashMethod.Sha256);
+                } else {
+                    if (throwExceptions) throw new ArgumentNullException("Id Generator should be provided to fetch and generate ID");
+                    return (false, resNumber, resGuid, null);
+                }
+            } else {
+                dbInfo = idManager.Invoke();
+                resNumber = dbInfo?.id ?? 0; //Regardless of whatever we generate, we set for both.
+                resGuid = dbInfo?.guid ?? Guid.Empty;
+            }
+            return (true, resNumber, resGuid, dbInfo);
         }
     }
 }

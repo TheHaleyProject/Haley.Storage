@@ -2,6 +2,7 @@
 using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
+using Microsoft.Identity.Client;
 
 namespace Haley.Services {
 
@@ -17,6 +18,11 @@ namespace Haley.Services {
                     result.Message = "Application is in Read-Only mode.";
                     return result;
                 }
+                if (input == null) {
+                    result.Message = "Input cannot be empty or null";
+                    return result;
+                }
+
                 var gPaths = ProcessAndBuildStoragePath(input, true);
                 if (string.IsNullOrWhiteSpace(input.TargetPath)) {
                     result.Message = "Unable to generate the final storage path. Please check inputs.";
@@ -75,9 +81,12 @@ namespace Haley.Services {
                     }
                 }
 
-                if (!result.ObjectExists) result.Message = "Uploaded."; //For skip also, we will return true (but object will exists)
+                if (!result.ObjectExists) {
+                    result.Message = "Uploaded."; //For skip also, we will return true (but object will exists)
+                }
                 result.Status = true;
                 result.Size = input.FileStream.Length; //storage size in bytes.
+                if (input.File != null) result.SetResult(input.File);
 
             } catch (Exception ex) {
                 result.Message = ex.Message;

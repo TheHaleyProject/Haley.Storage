@@ -147,9 +147,13 @@ namespace Haley.Services {
                     throwExceptions: true)
                     .path;
 
-                if (input.File == null) input.File = new OSSFileRoute(targetFileName, targetFilePath);
+                if (input.File == null) {
+                    input.File = new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid};
+                }
                 input.File.Path = targetFilePath;
                 if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = targetFileName;
+                if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid = holder.Cuid;
+                if (input.File.Id < 1) input.File.Id = holder.Id;
             }
         }
 

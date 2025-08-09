@@ -62,6 +62,12 @@ namespace Haley.Models {
             return this;
         }
 
+        public IOSSInfo ForceSetCuid(System.Guid guid) {
+            //if (guid == System.Guid.Empty) throw new Exception("Cannot set CUID. Input cannot be an empty GUID.");
+            Cuid = guid.ToString("N");
+            return this;
+        }
+
         public IOSSInfo ForceSetCuid(string guid) {
             if (string.IsNullOrWhiteSpace(guid)) throw new Exception("Cannot set CUID with empty value");
             var res = System.Guid.Empty;
