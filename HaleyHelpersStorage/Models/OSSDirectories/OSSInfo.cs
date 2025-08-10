@@ -8,7 +8,6 @@ using System.Linq;
 
 namespace Haley.Models {
     public class OSSInfo : IOSSInfo {
-        public const string DEFAULTNAME = "default";
         public string Name { get; private set; }
         public long Id { get; private set; }
         private string _displayName;
@@ -18,7 +17,7 @@ namespace Haley.Models {
                 if (!string.IsNullOrWhiteSpace(value)) {
                     _displayName = value.Trim();
                 } else {
-                    _displayName = DEFAULTNAME;
+                    _displayName = OSSConstants.DEFAULT_NAME;
                 }
                 if (!ValidateInternal(out var msg)) throw new Exception(msg);
                 Name = _displayName.ToDBName(); //Db compatible name
@@ -83,7 +82,7 @@ namespace Haley.Models {
         [IgnoreMapping] //Important.. no should map this.
         public string Cuid { get; private set; } //Collision resistant Unique identifier
         public OSSInfo(string displayName) {
-            DisplayName = displayName ?? DEFAULTNAME;
+            DisplayName = displayName ?? OSSConstants.DEFAULT_NAME;
         }
     }
 }

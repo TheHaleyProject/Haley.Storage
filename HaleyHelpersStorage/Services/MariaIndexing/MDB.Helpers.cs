@@ -48,7 +48,7 @@ namespace Haley.Utils {
             var dbid = request.Module.Cuid;
             //If directory name is not provided, then go for "default" as usual
             var dirParent = request.Folder?.Parent?.Id ?? 0;
-            var dirName = request.Folder?.Name ?? OSSInfo.DEFAULTNAME;
+            var dirName = request.Folder?.Name ?? OSSConstants.DEFAULT_NAME;
             var dirDbName = dirName.ToDBName();
 
             var dirInfo = await InsertAndFetchIDRead(dbid, 
@@ -103,7 +103,7 @@ namespace Haley.Utils {
             if (string.IsNullOrWhiteSpace(request.TargetName)) return (false, 0);
             var name = Path.GetFileNameWithoutExtension(request.TargetName)?.Trim();
             var ext = Path.GetExtension(request.TargetName)?.Trim();
-            if (string.IsNullOrWhiteSpace(ext)) ext = OSSInfo.DEFAULTNAME;
+            if (string.IsNullOrWhiteSpace(ext)) ext = OSSConstants.DEFAULT_NAME;
             if (string.IsNullOrWhiteSpace(name)) return (false, 0);
             name = name.ToDBName();
             ext = ext.ToDBName();

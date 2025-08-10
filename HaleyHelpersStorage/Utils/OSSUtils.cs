@@ -105,7 +105,8 @@ namespace Haley.Utils
             return joined.CreateGUID(HashMethod.Sha256).ToString("N");
         }
 
-        public static string BuildStoragePath(this IOSSRead input, string basePath, bool allowRootAccess = false, bool readonlyMode = false) {
+        public static string BuildStoragePath(this IOSSRead input, string basePath, bool allowRootAccess = false) {
+            bool readOnlyMode = !(input is IOSSWrite); //If the input is osswrite, then we are trying to upload a file.
             bool forFile = false;
             //While building storage path, may be we are building only the 
             if (input == null || !(input is OSSReadRequest req)) throw new ArgumentNullException($@"{nameof(IOSSRead)} cannot be null. It has to be of type {nameof(OSSReadRequest)}");
@@ -118,10 +119,10 @@ namespace Haley.Utils
                 //Now we have two items to build. Directory path and file path. May be we are just building a directory here.
                 req.SetTargetPath(basePath);
                 if (input.Folder != null && !input.Folder.IsVirutal) {
-                    req.SetTargetPath(Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess,readonlyMode)));
+                    req.SetTargetPath(Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess, readOnlyMode)));
                 }
                 if (fileReq != null && fileReq.File != null) {
-                    req.SetTargetPath(Path.Combine(req.TargetPath, fileReq.File.FetchRoutePath(req.TargetPath,true, allowRootAccess, readonlyMode)));
+                    req.SetTargetPath(Path.Combine(req.TargetPath, fileReq.File.FetchRoutePath(req.TargetPath, true, allowRootAccess, readOnlyMode)));
                 }
             } else {
                 req.SetTargetPath(Path.Combine(basePath, req.TargetPath));

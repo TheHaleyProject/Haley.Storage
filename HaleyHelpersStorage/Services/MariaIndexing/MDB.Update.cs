@@ -27,7 +27,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Haley.Utils {
     public partial class MariaDBIndexing : IDSSIndexing {
-        public async Task<IFeedback> UpdateDocumentInfo(string moduleCuid, IOSSFileRoute file) {
+        public async Task<IFeedback> UpdateDocVersionInfo(string moduleCuid, IOSSFileRoute file) {
             Feedback result = new Feedback();
             try {
                 if (string.IsNullOrWhiteSpace(moduleCuid)) return result.SetMessage($@"Module CUID is mandatory to update document info");

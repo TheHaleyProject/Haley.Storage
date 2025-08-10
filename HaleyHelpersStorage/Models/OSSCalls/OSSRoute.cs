@@ -9,6 +9,7 @@ namespace Haley.Models {
         public string Cuid { get; set; } //Collision resistance Unique Identifier 
         public string Name { get; set; }
         public string Path { get; set; }
+        public OSSRoute() { }
         public OSSRoute(string name, string path) { 
             Name = name;
             Path = path;

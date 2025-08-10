@@ -8,7 +8,7 @@ namespace Haley.Models {
         public string SavedName { get; set; } //We are not going to show this anymore.. not required for user to know
         public string RawName { get; set; }
         public long Size { get; set; }
-        public bool ObjectExists { get; set; } = false;
+        public bool PhysicalObjectExists { get; set; } = false;
 
         public OSSResponse() {
         }

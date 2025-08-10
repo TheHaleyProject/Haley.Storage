@@ -10,7 +10,7 @@ namespace Haley.Models {
         public IOSSControlled Module { get; private set; }
         public IOSSControlled Workspace { get; private set; } 
         public IOSSFolderRoute Folder { get; set; }
-        public virtual OSSReadRequest SetComponent(OSSControlled input, OSSComponent type) {
+        public virtual IOSSRead SetComponent(IOSSControlled input, OSSComponent type) {
             switch (type) {
                 case OSSComponent.Client:
                     Client = input;

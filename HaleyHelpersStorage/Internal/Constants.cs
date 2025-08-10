@@ -25,6 +25,7 @@ namespace Haley.Internal {
         public const string PASSWORD = $@"@{nameof(PASSWORD)}";
         public const string DATETIME = $@"@{nameof(DATETIME)}";
         public const string PARENT = $@"@{nameof(PARENT)}";
+        public const string DIRNAME = $@"@{nameof(DIRNAME)}";
         public const string CONTROLMODE = $@"@{nameof(CONTROLMODE)}";
         public const string PARSEMODE = $@"@{nameof(PARSEMODE)}";
         public const string WSPACE = $@"@{nameof(WSPACE)}";
@@ -68,6 +69,8 @@ namespace Haley.Internal {
                 public const string EXISTS = $@"select dir.id, dir.cuid as uid from directory as dir where dir.workspace = {WSPACE} and dir.parent = {PARENT} and dir.name = {NAME};";
                 public const string EXISTS_BY_CUID = $@"select dir.id from directory as dir where dir.cuid = {CUID};";
                 public const string INSERT = $@"insert ignore into directory (workspace,parent,name,display_name) values ({WSPACE},{PARENT},{NAME},{DNAME});";
+                public const string GET = $@"select dir.id from directory as dir where dir.workspace = {WSPACE} and dir.parent={PARENT} and dir.name ={NAME};";
+                public const string GET_BY_CUID = $@"select dir.id from directory as dir where dir.cuid = {CUID};";
             }
             public class EXTENSION {
                 public const string EXISTS = $@"select ext.id from extension as ext where ext.name = {NAME};";
@@ -82,6 +85,10 @@ namespace Haley.Internal {
             public class NAMESTORE {
                 public const string EXISTS = $@"select ns.id from name_store as ns where ns.name = {NAME} and ns.extension = {EXT};";
                 public const string INSERT = $@"insert ignore into name_store (name,extension) values ({NAME},{EXT});";
+                public const string GET = $@"SELECT ns.id FROM name_store AS ns 
+                                            INNER JOIN ( SELECT vin.id FROM vault AS vin WHERE vin.name = {NAME}) AS v ON v.id = ns.name
+                                            INNER JOIN extension AS ext ON ext.id = ns.extension
+                                            WHERE ext.name = {EXT};";
             }
 
             public class DOCUMENT {
@@ -89,6 +96,17 @@ namespace Haley.Internal {
                 public const string EXISTS_BY_CUID = $@"select doc.id from document as doc where doc.cuid = {CUID};";
                 public const string INSERT = $@"insert ignore into document (workspace,parent,name) values ({WSPACE},{PARENT},{NAME});";
                 public const string INSERT_INFO = $@"insert into doc_info (file,display_name) values ({PARENT}, {DNAME}) ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);";
+                public const string GET_BY_PARENT = $@"select doc.id from document as doc where doc.parent= {PARENT} and doc.name = {NAME};";
+                public const string GET_BY_CUID = $@"select doc.id from document as doc where doc.cuid = {CUID};";
+                public const string GET_BY_NAME = $@"SELECT dv.id FROM document AS dv
+                        INNER JOIN 
+                            (SELECT ns.id FROM name_store AS ns 
+                            INNER JOIN ( SELECT vin.id FROM vault AS vin WHERE vin.name = {NAME}) AS v ON v.id = ns.name
+                            INNER JOIN extension AS ext ON ext.id = ns.extension
+                            WHERE ext.name = {EXT}) AS ons ON ons.id = dv.name
+                        INNER join
+                            (select dir.id from directory as dir 
+                            where dir.workspace = {WSPACE} and dir.parent={PARENT} and dir.name ={DIRNAME}) AS odir ON odir.id = dv.parent";
             }
             
             public class DOCVERSION {
@@ -99,6 +117,22 @@ namespace Haley.Internal {
                 public const string FIND_LATEST = $@"select MAX(dv.ver) from doc_version as dv where dv.parent = {PARENT};";
                 public const string INSERT_INFO = $@"insert into version_info (id, saveas_name,path,size) values({ID},{SAVENAME},{PATH},{SIZE}) ON DUPLICATE KEY UPDATE saveas_name=VALUES(saveas_name),path=VALUES(path),size=VALUES(path);";
                 public const string GET_INFO = $@"select * from version_info where id = {ID};";
+                public const string GET_FULL_BY_CUID = $@"SELECT dv.id,dv.cuid as uid, dv.created, dv.ver, vi.path , vi.size, di.display_name as dname 
+                            FROM doc_version AS dv 
+                            INNER JOIN version_info AS vi ON vi.id = dv.id 
+                            LEFT JOIN doc_info as di on di.file = dv.parent
+                            WHERE dv.cuid = {VALUE};";
+                public const string GET_FULL_BY_ID = $@"SELECT dv.id,dv.cuid as uid, dv.created, dv.ver, vi.path , vi.size,di.display_name as dname 
+                            FROM doc_version AS dv 
+                            INNER JOIN version_info AS vi ON vi.id = dv.id 
+                            LEFT JOIN doc_info as di on di.file = dv.parent
+                            WHERE dv.id = {VALUE};";
+                public const string GET_LATEST_BY_PARENT = $@"SELECT dv.id,dv.cuid as uid, dv.created, dv.ver, vi.path , vi.size ,di.display_name as dname 
+                            FROM doc_version AS dv
+                            INNER JOIN (select MAX(dvi.ver) AS ver from doc_version as dvi where dvi.parent = {PARENT}) AS dvo ON dvo.ver = dv.ver
+                            INNER JOIN version_info AS vi ON vi.id = dv.id
+                            LEFT JOIN doc_info as di on di.file = {PARENT}
+                            WHERE dv.parent = {PARENT};";
 
             }
         }

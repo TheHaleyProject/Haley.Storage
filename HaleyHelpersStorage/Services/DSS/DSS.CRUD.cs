@@ -59,7 +59,7 @@ namespace Haley.Services {
 
                 //Either file doesn't exists.. or exists and replace
 
-                if (!result.ObjectExists || input.ResolveMode == OSSResolveMode.Replace) {
+                if (!result.PhysicalObjectExists || input.ResolveMode == OSSResolveMode.Replace) {
                     //TODO : DEFERRED REPLACEMENT
                     //If the file is currently in use, try for 5 times and then replace. May be easy option would be to store in temporary place and then update a database that a temporary file is created and then later, with some background process check the database and try to replace. This way we dont' have to block the api call or wait for completion.
                     await input.FileStream?.TryReplaceFileAsync(input.TargetPath, input.BufferSize);
@@ -81,7 +81,7 @@ namespace Haley.Services {
                     }
                 }
 
-                if (!result.ObjectExists) {
+                if (!result.PhysicalObjectExists) {
                     result.Message = "Uploaded."; //For skip also, we will return true (but object will exists)
                 }
                 result.Status = true;
@@ -92,15 +92,15 @@ namespace Haley.Services {
             } finally {
                 if (input != null && Indexer != null && input.Module != null && input.File != null) {
                     //We try to make a call to the db to update the information about the file version info.
-                    var upInfo = await Indexer.UpdateDocumentInfo(input.Module.Cuid, input.File);
+                    var upInfo = await Indexer.UpdateDocVersionInfo(input.Module.Cuid, input.File);
                     Console.WriteLine($@"Document version update status: {upInfo.Status} {Environment.NewLine} Result : {upInfo.Result.ToString()}");
                 }
             }
             return result;
         }
-        public Task<IOSSFileStreamResponse> Download(IOSSRead input, bool auto_search_extension = true) {
+        public Task<IOSSFileStreamResponse> Download(IOSSReadFile input, bool auto_search_extension = true) {
             IOSSFileStreamResponse result = new FileStreamResponse() { Status = false, Stream = Stream.Null };
-            var path = ProcessAndBuildStoragePath(input,  true, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input,true).targetPath;
             if (string.IsNullOrWhiteSpace(path)) return Task.FromResult(result);
 
             if (!File.Exists(path) && auto_search_extension) {
@@ -130,18 +130,22 @@ namespace Haley.Services {
                 result.Message = "File doesn't exist.";
                 return Task.FromResult(result);
             }
+            result.SaveName = input.File.SaveAsName; //Name with which we expect it to be saved.
             result.Status = true;
             result.Extension = Path.GetExtension(path);
             result.Stream = new FileStream(path, FileMode.Open, FileAccess.Read) as Stream;
             return Task.FromResult(result); //Stream is open here.
         }
-        public async Task<IFeedback> Delete(IOSSRead input) {
+        public Task<IOSSFileStreamResponse> Download(IOSSFileRoute input, bool auto_search_extension = true) {
+            throw new NotImplementedException();
+        }
+        public async Task<IFeedback> Delete(IOSSReadFile input) {
             IFeedback feedback = new Feedback() { Status = false };
             if (!WriteMode) {
                 feedback.Message = "Application is in Read-Only mode.";
                 return feedback;
             }
-            var path = ProcessAndBuildStoragePath(input, true, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, true).targetPath;
 
             if (string.IsNullOrWhiteSpace(path)) {
                 feedback.Message = "Unable to generate path from provided inputs.";
@@ -159,7 +163,7 @@ namespace Haley.Services {
         }
         public IFeedback Exists(IOSSRead input, bool isFilePath = false) {
             var feedback = new Feedback() { Status = false };
-            var path = ProcessAndBuildStoragePath(input, isFilePath, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, isFilePath).targetPath;
             if (string.IsNullOrWhiteSpace(path)) {
                 feedback.Message = "Unable to generate path from provided inputs.";
                 return feedback;
@@ -175,14 +179,14 @@ namespace Haley.Services {
 
 
         public long GetSize(IOSSRead input) {
-            var path = ProcessAndBuildStoragePath(input, true, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, true).targetPath;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return 0;
             return new FileInfo(path).Length;
         }
 
         public Task<IOSSDirResponse> GetDirectoryInfo(IOSSRead input) {
             IOSSDirResponse result = new OSSDirResponse() { Status = false };
-            var path = ProcessAndBuildStoragePath(input, false, readonlyMode: true).targetPath;
+            var path = ProcessAndBuildStoragePath(input, false).targetPath;
             if (string.IsNullOrWhiteSpace(path)) {
                 result.Message = "Unable to generate path.";
                 return Task.FromResult(result);
@@ -211,7 +215,7 @@ namespace Haley.Services {
                     result.Message = "Application is in Read-Only mode.";
                     return result;
                 }
-                var path = ProcessAndBuildStoragePath(input, false, readonlyMode: true).targetPath;
+                var path = ProcessAndBuildStoragePath(input, false).targetPath;
 
                 if (string.IsNullOrWhiteSpace(path)) {
                     result.Message = $@"Unable to generate the path. Please check inputs.";
@@ -243,7 +247,7 @@ namespace Haley.Services {
                 feedback.Message = "Application is in Read-Only mode.";
                 return feedback;
             }
-            var pathInfo = ProcessAndBuildStoragePath(input, false, readonlyMode: true);
+            var pathInfo = ProcessAndBuildStoragePath(input, false);
             var path = pathInfo.targetPath;
             if (string.IsNullOrWhiteSpace(path)) {
                 feedback.Message = "Unable to generate path from provided inputs.";
@@ -285,8 +289,8 @@ namespace Haley.Services {
                 return false;
             }
 
-            result.ObjectExists = File.Exists(filePath);
-            if (result.ObjectExists) {
+            result.PhysicalObjectExists = File.Exists(filePath);
+            if (result.PhysicalObjectExists) {
                 switch (conflict) {
                     case OSSResolveMode.Skip:
                     result.Status = true;

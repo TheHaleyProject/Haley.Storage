@@ -8,6 +8,7 @@ namespace Haley.Models {
         public int Version { get; set; } = 0;
         public long Size { get; set; } = 0;
         public string SaveAsName { get; set; }
+        public OSSFileRoute() { }
         public OSSFileRoute(string name, string path) : base(name,path) { 
         }
     }

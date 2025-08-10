@@ -35,7 +35,7 @@ namespace Haley.Services {
         }
         async Task Initialize(bool force = false) {
             if (_isInitialized && !force) return;
-            var defObj = new OSSControlled(OSSInfo.DEFAULTNAME);
+            var defObj = new OSSControlled(OSSConstants.DEFAULT_NAME);
             await RegisterClient(defObj); //Registers defaul client, with default module and default workspace
             _isInitialized = true;
         }

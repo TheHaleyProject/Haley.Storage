@@ -2,9 +2,12 @@
 using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace Haley.Services {
     public partial class DiskStorageService : IDiskStorageService {
+        ConcurrentDictionary<string, string> _pathCache = new ConcurrentDictionary<string, string>(); //Let us store the paths of all places.
         public (string name, string path) GenerateBasePath(IOSSControlled input, OSSComponent basePath) {
             string suffix = string.Empty;
             int length = 2;
@@ -66,7 +69,7 @@ namespace Haley.Services {
             return (target, targetType, metaFilePath, cuid);
         }
 
-        void FetchBasePath<T>(IOSSRead input, List<string> paths) where T : IOSSDirectory {
+        void AddBasePath<T>(IOSSRead input, List<string> paths) where T : IOSSDirectory {
             //We try to take the paths for all the components.
             if (paths == null) paths = new List<string>();
 
@@ -91,18 +94,28 @@ namespace Haley.Services {
                     } catch (Exception) {
                     }
                 }
+
+                if (!_pathCache.ContainsKey(info.cuid)) _pathCache.TryAdd(info.cuid, string.Empty);
+                var partialPath = Path.Combine(paths.ToArray());
+                _pathCache.TryUpdate(info.cuid, partialPath, string.Empty);
             }
         }
 
-        string FetchBasePath(IOSSRead request) {
+        string FetchBasePath(IOSSRead request, bool ignoreCache = false) {
             Initialize().Wait(); //To ensure base folders are created.
-            string result = BasePath;
-            List<string> paths = new List<string>();
-            paths.Add(BasePath);
-            FetchBasePath<OSSClient>(request, paths);
-            FetchBasePath<OSSModule>(request, paths);
-            FetchBasePath<OSSWorkspace>(request, paths);
-            if (paths.Count > 0) result = Path.Combine(paths.ToArray());
+            string result = string.Empty;
+            if (!ignoreCache && _pathCache.ContainsKey(request.Workspace.Cuid) && !string.IsNullOrWhiteSpace(_pathCache[request.Workspace.Cuid])) {
+                result = _pathCache[request.Workspace.Cuid];
+            } else {
+                result = BasePath;
+                List<string> paths = new List<string>();
+                paths.Add(BasePath);
+                AddBasePath<OSSClient>(request, paths);
+                AddBasePath<OSSModule>(request, paths);
+                AddBasePath<OSSWorkspace>(request, paths);
+                if (paths.Count > 0) result = Path.Combine(paths.ToArray());
+            }
+            
             if (!Directory.Exists(result)) throw new DirectoryNotFoundException("The base path doesn't exists.. Unable to build the base path from given input.");
             return result;
         }
@@ -110,45 +123,93 @@ namespace Haley.Services {
             if (isNumber) return (Config.SplitLengthNumber, Config.DepthNumber);
             return (Config.SplitLengthHash, Config.DepthHash);
         }
-        public void ProcessFileRoute(IOSSReadFile input) {
-            //The last storage route should be in the format of a file
-            if (input != null &&  (input.File == null || string.IsNullOrWhiteSpace(input.File.Path))) {
-                //We are trying to upload a file but the last storage route is not in the format of a file.
-                //We need to see if the filestream is present and take the name from there.
-                //Priority for the name comes from TargetName
-                string targetFileName = string.Empty;
-                string targetFilePath = string.Empty;
-                if (!string.IsNullOrWhiteSpace(input.TargetName)) {
-                    targetFileName = Path.GetFileName(input.TargetName);
-                } else if (input is IOSSWrite inputW) {
-                    if (!string.IsNullOrWhiteSpace(inputW.FileOriginalName)) {
-                        targetFileName = Path.GetFileName(inputW.FileOriginalName);
-                    } else if (inputW.FileStream != null && inputW.FileStream is FileStream fs) {
-                        targetFileName = Path.GetFileName(fs.Name);
-                        if (string.IsNullOrWhiteSpace(inputW.FileOriginalName)) inputW.SetFileOriginalName(targetFileName);
-                    }
-                } else {
-                    throw new ArgumentNullException("For the given file no save name is specified.");
-                }
+        public async Task ProcessFileRoute(IOSSReadFile input) {
+            //If the input is OSSWrite, then we are tyring to upload or else, we are merely trying to check.
+            if (input == null) return;
+            if (!string.IsNullOrWhiteSpace(input.TargetPath)) return; // End goal is to have this path defined.
+            if (input.File != null && !string.IsNullOrWhiteSpace(input.File.Path)) return; //Our end goal is to generate this path.
 
-                if (string.IsNullOrWhiteSpace(input.TargetName)) input.SetTargetName(targetFileName);
-                var workspaceCuid = OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace);
-                //If a component information is not avaialble for the workspace, we should not proceed.
-                if (!Indexer.TryGetComponentInfo<OSSWorkspace>(workspaceCuid, out OSSWorkspace wInfo)) throw new Exception($@"Unable to find the workspace information for the given input. Workspace name : {input.Workspace.Name} - Cuid : {workspaceCuid}.");
+            IOSSWrite inputW = input as IOSSWrite;
+            bool forupload = inputW != null;
+
+            var workspaceCuid = OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace);
+            //If a component information is not avaialble for the workspace, we should not proceed.
+            if (!Indexer.TryGetComponentInfo<OSSWorkspace>(workspaceCuid, out OSSWorkspace wInfo)) throw new Exception($@"Unable to find the workspace information for the given input. Workspace name : {input.Workspace.Name} - Cuid : {workspaceCuid}.");
+
+            //If the workspace is managed, then we have the possibility to get the path from the database.
+            if (!forupload && wInfo.ContentControl != OSSControlMode.None) {
+                if (!string.IsNullOrWhiteSpace(input.File?.Cuid) || input.File?.Id > 0) {
+                    //So, the workspace is partially or fully managed.
+                    var existing = input.File.Id > 0 ?
+                        await Indexer.GetDocVersionInfo(input.Module.Cuid, input.File.Id) :
+                        await Indexer.GetDocVersionInfo(input.Module.Cuid, input.File.Cuid);
+                    if (existing != null && existing.Status && existing.Result is Dictionary<string, object> dic) {
+                        //We retrieved the information from DB. Just fetch the path.
+                        if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
+                            input.File.Path = dic["path"].ToString();
+                            if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
+                            input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
+                            return; //No need to proceed further.
+                        }
+                    }
+                } else if (!string.IsNullOrWhiteSpace(input.File?.Name) || !string.IsNullOrWhiteSpace(input.TargetName)) {
+                    //We try to search by the target name. For a target name, we also need the parent directory information as well.
+                    var searchName = input.File?.Name ?? input.TargetName;
+                    var dirName = input.Folder?.Name ?? OSSConstants.DEFAULT_NAME;
+                    var dirParent = input.Folder?.Parent?.Id ?? 0;
+                    var existing = await Indexer.GetDocVersionInfo(input.Module.Cuid, workspaceCuid, searchName, dirName, dirParent);
+                    if (existing != null && existing.Status && existing.Result is Dictionary<string, object> dic) {
+                        //We retrieved the information from DB. Just fetch the path.
+                        if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
+                            if (input.File == null) input.SetFile(new OSSFileRoute(input.TargetName,string.Empty) {Cuid = dic["uid"]?.ToString() });
+                            input.File.Path = dic["path"].ToString();
+                            if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
+                            input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
+                            return; //No need to proceed further.
+                        }
+                    }
+                }
+            }
+
+            string targetFileName = string.Empty;
+            string targetFilePath = string.Empty;
+            if (!string.IsNullOrWhiteSpace(input.TargetName)) {
+                targetFileName = Path.GetFileName(input.TargetName);
+            } else if (forupload) {
+                //We need to see if the filestream is present and take the name from there.
+                if (!string.IsNullOrWhiteSpace(inputW!.FileOriginalName)) {
+                    targetFileName = Path.GetFileName(inputW.FileOriginalName);
+                } else if (inputW.FileStream != null && inputW.FileStream is FileStream fs) {
+                    targetFileName = Path.GetFileName(fs.Name);
+                    if (string.IsNullOrWhiteSpace(inputW.FileOriginalName)) inputW.SetFileOriginalName(targetFileName);
+                } 
+            }
+
+            if (string.IsNullOrWhiteSpace(input.TargetName) && !string.IsNullOrWhiteSpace(targetFileName)) input.SetTargetName(targetFileName);
+
+            
+            //If we are trying to upload
+            if (input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {
+                //If we reach this point, then it means we are trying to prepare the paths based on names.
+                //We are trying to upload or read a file but the last storage route is not in the format of a file.
+                if (string.IsNullOrWhiteSpace(targetFileName)) throw new ArgumentNullException("For the given file no target name is specified.");
 
                 //TODO: USE THE INDEXER TO GET THE PATH FOR THIS SPECIFIC FILE WITH MODULE AND CLIENT NAME.
                 //TODO: IF THE PATH IS OBTAINED, THEN JUST JOIN THE PATHS.
                 var holder = new OSSControlled(targetFileName, wInfo.ContentControl, wInfo.ContentParse, isVirtual: false);
                 targetFilePath = OSSUtils.GenerateFileSystemSavePath(
                     holder,
-                    uidManager: (h) => { return Indexer?.RegisterDocuments(input,h) ?? (0,Guid.Empty); },
+                    uidManager: (h) => {
+                        if (Indexer == null || !forupload) return (0, Guid.Empty); //When we are not uploading, then no point in registering in the database.
+                        return Indexer.RegisterDocuments(input, h);
+                    },
                     splitProvider: SplitProvider,
                     suffix: Config.SuffixFile,
                     throwExceptions: true)
                     .path;
 
                 if (input.File == null) {
-                    input.File = new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid, Version = holder.Version,SaveAsName = holder.SaveAsName};
+                    input.SetFile(new OSSFileRoute(targetFileName, targetFilePath) { Id = holder.Id, Cuid = holder.Cuid, Version = holder.Version, SaveAsName = holder.SaveAsName });
                 }
 
                 input.File.Path = targetFilePath;
@@ -156,16 +217,16 @@ namespace Haley.Services {
                 if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid = holder.Cuid;
                 if (string.IsNullOrWhiteSpace(input.File.SaveAsName)) input.File.SaveAsName = holder.SaveAsName;
                 if (input.File.Id < 1) input.File.Id = holder.Id;
-                if (input is IOSSWrite writeInp) {
-                    input.File.Size = writeInp.FileStream?.Length ?? 0;
+                if (forupload) {
+                    input.File.Size = inputW!.FileStream?.Length ?? 0;
                 }
             }
         }
 
-        public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool allowRootAccess = false, bool readonlyMode = false) {
+        public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool allowRootAccess = false) {
             var bpath = FetchBasePath(input);
-            if (input is IOSSReadFile fileRead) ProcessFileRoute(fileRead);
-            var path = input?.BuildStoragePath(bpath, allowRootAccess, readonlyMode); //This will also ensure we are not trying to delete something 
+            if (input is IOSSReadFile fileRead) ProcessFileRoute(fileRead).Wait();
+            var path = input?.BuildStoragePath(bpath, allowRootAccess); //This will also ensure we are not trying to delete something 
             return (bpath, path);
         }
     }
