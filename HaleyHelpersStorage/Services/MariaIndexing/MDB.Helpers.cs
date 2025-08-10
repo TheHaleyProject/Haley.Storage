@@ -39,6 +39,7 @@ namespace Haley.Utils {
             var ws = await InsertAndFetchIDScalar(dbid,
                 () => (INSTANCE.WORKSPACE.EXISTS, Consolidate((ID, wspace.Id))),
                 () => (INSTANCE.WORKSPACE.INSERT, Consolidate((ID, wspace.Id))),
+                readOnly:request.ReadOnlyMode,
                 $@"Unable to insert the workspace  {wspace.Id}");
             return (true, wspace.Id);
         }
@@ -47,19 +48,29 @@ namespace Haley.Utils {
             if (ws_id == 0) return (false, (0, string.Empty));
             var dbid = request.Module.Cuid;
             //If directory name is not provided, then go for "default" as usual
+            var dirId = request.Folder?.Id ?? 0;
+            var dirCuid = request.Folder?.Cuid ?? string.Empty;
+            
+
             var dirParent = request.Folder?.Parent?.Id ?? 0;
             var dirName = request.Folder?.Name ?? OSSConstants.DEFAULT_NAME;
             var dirDbName = dirName.ToDBName();
 
-            var dirInfo = await InsertAndFetchIDRead(dbid, 
-                () => (INSTANCE.DIRECTORY.EXISTS, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName))), 
-                () => (INSTANCE.DIRECTORY.INSERT, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName), (DNAME, dirName))), 
+            var dirInfo = await InsertAndFetchIDRead(dbid,
+                () => {
+                    if (dirId < 1 && string.IsNullOrWhiteSpace(dirCuid))
+                        return (INSTANCE.DIRECTORY.EXISTS, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName)));
+                    var query = dirId < 1 ? INSTANCE.DIRECTORY.EXISTS_BY_CUID : INSTANCE.DIRECTORY.EXISTS_BY_ID;
+                    return (query, Consolidate((VALUE, dirId < 1 ? dirCuid : dirId)));
+                    },
+                () => (INSTANCE.DIRECTORY.INSERT, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName), (DNAME, dirName))),
+                readOnly: request.ReadOnlyMode,
                 $@"Unable to insert the directory {dirName} to the workspace : {ws_id}");
-           
+
             return (true, (dirInfo.id, dirInfo.uid));
         }
 
-        async Task<long> InsertAndFetchIDScalar(string dbid, Func<(string query,(string key,object value)[] parameters)> check, Func<(string query, (string key, object value)[] parameters)> insert = null, string failureMessage = "Error", bool preCheck = true) {
+        async Task<long> InsertAndFetchIDScalar(string dbid, Func<(string query,(string key,object value)[] parameters)> check, Func<(string query, (string key, object value)[] parameters)> insert = null, bool readOnly = false, string failureMessage = "Error", bool preCheck = true) {
             if (check == null) return 0;
            
             var checkInput = check.Invoke();
@@ -67,7 +78,7 @@ namespace Haley.Utils {
             if (preCheck) info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }, checkInput.parameters);
 
             if (info == null) {
-                if (insert == null) return 0;
+                if (insert == null || readOnly) return 0;
                 var insertInput = insert.Invoke();
                 await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }, insertInput.parameters);
                 info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }, checkInput.parameters);
@@ -77,7 +88,7 @@ namespace Haley.Utils {
             return id;
         }
 
-        async Task<(long id, string uid)> InsertAndFetchIDRead(string dbid, Func<(string query, (string key, object value)[] parameters)> check = null, Func<(string query, (string key, object value)[] parameters)> insert = null, string failureMessage = "Error", bool preCheck = true) {
+        async Task<(long id, string uid)> InsertAndFetchIDRead(string dbid, Func<(string query, (string key, object value)[] parameters)> check = null, Func<(string query, (string key, object value)[] parameters)> insert = null, bool readOnly = false, string failureMessage = "Error", bool preCheck = true) {
             if (check == null) return (0, string.Empty);
             var checkInput = check.Invoke();
 
@@ -85,7 +96,7 @@ namespace Haley.Utils {
             if (preCheck) info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }, checkInput.parameters);
 
             if (info == null || !(info is Dictionary<string, object> dic1) || dic1.Count < 1) {
-                if (insert == null) return (0, string.Empty);
+                if (insert == null || readOnly) return (0, string.Empty);
                 var insertInput = insert.Invoke();
                 await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }, insertInput.parameters);
                 info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }, checkInput.parameters);
@@ -111,19 +122,20 @@ namespace Haley.Utils {
             var dbid = request.Module.Cuid;
 
             //Extension Exists?
-            long extId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.EXTENSION.EXISTS, Consolidate((NAME, ext))), () => (INSTANCE.EXTENSION.INSERT,Consolidate((NAME, ext))), $@"Unable to fetch extension id for {ext}");
+            long extId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.EXTENSION.EXISTS, Consolidate((NAME, ext))), () => (INSTANCE.EXTENSION.INSERT,Consolidate((NAME, ext))), readOnly:request.ReadOnlyMode, $@"Unable to fetch extension id for {ext}");
 
             // Name Exists ?
-            long nameId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.VAULT.EXISTS, Consolidate((NAME, name))), () => (INSTANCE.VAULT.INSERT, Consolidate((NAME, name))), $@"Unable to fetch name id for {name}");
+            long nameId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.VAULT.EXISTS, Consolidate((NAME, name))), () => (INSTANCE.VAULT.INSERT, Consolidate((NAME, name))),readOnly:request.ReadOnlyMode, $@"Unable to fetch name id for {name}");
 
             //Namestore Exists?
-            long nsId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.NAMESTORE.EXISTS, Consolidate((NAME, nameId), (EXT, extId))), () => (INSTANCE.NAMESTORE.INSERT, Consolidate((NAME, nameId), (EXT, extId))), $@"Unable to fetch name store id for name : {name} and extension : {ext}");
+            long nsId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.NAMESTORE.EXISTS, Consolidate((NAME, nameId), (EXT, extId))), () => (INSTANCE.NAMESTORE.INSERT, Consolidate((NAME, nameId), (EXT, extId))), readOnly: request.ReadOnlyMode, $@"Unable to fetch name store id for name : {name} and extension : {ext}");
 
             return (true, nsId);
         }
 
         async Task<(long id,Guid guid)> RegisterDocumentsInternal(IOSSRead request, IOSSControlled holder) {
             try {
+                if (request.ReadOnlyMode) throw new ArgumentException("Cannot register a document in readonly mode");
                 //If we are in ParseMode, we still do all the process, but, store the file as is with Parsing information.
                 //For parse mode, let us not throw any exception.
                 (long id, Guid guid) result = (0, Guid.Empty);
@@ -142,6 +154,7 @@ namespace Haley.Utils {
                     docInfo = await InsertAndFetchIDRead(dbid, 
                         () => (INSTANCE.DOCUMENT.EXISTS, Consolidate((PARENT, dir.result.id), (NAME, ns.id))),
                         ()=> (INSTANCE.DOCUMENT.INSERT, Consolidate((WSPACE,ws.id), (PARENT, dir.result.id), (NAME, ns.id))),
+                         readOnly: request.ReadOnlyMode,
                         $@"Unable to insert document with name {request.TargetName}",false);
                     var dname = Path.GetFileName(request.TargetName);
                     await _agw.NonQuery(new AdapterArgs(dbid) { Query = INSTANCE.DOCUMENT.INSERT_INFO }, (PARENT, docInfo.id), (DNAME, dname));
@@ -160,6 +173,7 @@ namespace Haley.Utils {
                 var dvInfo = await InsertAndFetchIDRead(dbid,
                     () => (INSTANCE.DOCVERSION.EXISTS, Consolidate((PARENT, docInfo.id), (VERSION, version))),
                     () => (INSTANCE.DOCVERSION.INSERT, Consolidate((PARENT, docInfo.id), (VERSION, version))),
+                     readOnly: request.ReadOnlyMode,
                     $@"Unable to insert document version for the document {docInfo.id}", false);
 
                 if (dvInfo.id > 0 && !string.IsNullOrWhiteSpace(dvInfo.uid)) {

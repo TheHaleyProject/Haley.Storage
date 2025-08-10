@@ -8,6 +8,7 @@ namespace Haley.Models {
         public bool IsVirutal { get; set; }
         public bool CreateIfMissing { get; set; }
         public IOSSRoute Parent { get; set; }
+        public OSSFolderRoute() { }
         public OSSFolderRoute(string name, string path) : base(name,path) { 
         }
     }

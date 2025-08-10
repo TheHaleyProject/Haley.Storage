@@ -134,10 +134,12 @@ namespace Haley.Services {
 
             var workspaceCuid = OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace);
             //If a component information is not avaialble for the workspace, we should not proceed.
-            if (!Indexer.TryGetComponentInfo<OSSWorkspace>(workspaceCuid, out OSSWorkspace wInfo)) throw new Exception($@"Unable to find the workspace information for the given input. Workspace name : {input.Workspace.Name} - Cuid : {workspaceCuid}.");
-
+            if (!Indexer.TryGetComponentInfo<OSSWorkspace>(workspaceCuid, out OSSWorkspace wInfo) && forupload) {
+                throw new Exception($@"Unable to find the workspace information for the given input. Workspace name : {input.Workspace.Name} - Cuid : {workspaceCuid}.");
+            }
+            
             //If the workspace is managed, then we have the possibility to get the path from the database.
-            if (!forupload && wInfo.ContentControl != OSSControlMode.None) {
+            if (!forupload && (wInfo?.ContentControl != OSSControlMode.None || input.File != null)) {
                 if (!string.IsNullOrWhiteSpace(input.File?.Cuid) || input.File?.Id > 0) {
                     //So, the workspace is partially or fully managed.
                     var existing = input.File.Id > 0 ?
@@ -223,9 +225,20 @@ namespace Haley.Services {
             }
         }
 
+
+
         public (string basePath, string targetPath) ProcessAndBuildStoragePath(IOSSRead input, bool allowRootAccess = false) {
             var bpath = FetchBasePath(input);
             if (input is IOSSReadFile fileRead) ProcessFileRoute(fileRead).Wait();
+            if (input.Folder != null) {
+                //Find out if the workspace is managed or not. So that, we can set the folder as Virtual
+                var workspaceCuid = OSSUtils.GenerateCuid(input, OSSComponent.WorkSpace);
+                //If a component information is not avaialble for the workspace, we should not proceed.
+                if (Indexer.TryGetComponentInfo<OSSWorkspace>(workspaceCuid, out OSSWorkspace wInfo)) {
+                    if (wInfo.ContentControl != OSSControlMode.None) input.Folder.IsVirutal = true;
+                }
+            }
+            
             var path = input?.BuildStoragePath(bpath, allowRootAccess); //This will also ensure we are not trying to delete something 
             return (bpath, path);
         }

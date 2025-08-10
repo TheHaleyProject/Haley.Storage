@@ -40,8 +40,9 @@ namespace Haley.Utils
             IOSSUID uidInfo = null;
 
             if (nObj.ControlMode == OSSControlMode.None) {
-                nObj.SaveAsName = nObj.Name;
+                nObj.SaveAsName = nObj.Name; //Completely UnManaged.
             } else {
+                //Partially or fully managed
                 if (nObj.DisplayName.TryPopulateControlledID(out uidInfo,nObj.ControlMode, parse_overwrite ?? nObj.ParseMode, uidManager,nObj, throwExceptions)) {
                     nObj.SaveAsName = (nObj.ControlMode == OSSControlMode.Number) ? uidInfo.Id.ToString() : uidInfo.Guid.ToString("N");
                 }
@@ -106,7 +107,7 @@ namespace Haley.Utils
         }
 
         public static string BuildStoragePath(this IOSSRead input, string basePath, bool allowRootAccess = false) {
-            bool readOnlyMode = !(input is IOSSWrite); //If the input is osswrite, then we are trying to upload a file.
+            bool readOnlyMode = input.ReadOnlyMode || !(input is IOSSWrite); //If the input is osswrite, then we are trying to upload a file or else we deliberately set the input as readonly
             bool forFile = false;
             //While building storage path, may be we are building only the 
             if (input == null || !(input is OSSReadRequest req)) throw new ArgumentNullException($@"{nameof(IOSSRead)} cannot be null. It has to be of type {nameof(OSSReadRequest)}");
@@ -117,7 +118,7 @@ namespace Haley.Utils
             if (!Directory.Exists(basePath)) throw new DirectoryNotFoundException("Base directory not found. Please ensure it is present");
             if (string.IsNullOrWhiteSpace(req.TargetPath)) {
                 //Now we have two items to build. Directory path and file path. May be we are just building a directory here.
-                req.SetTargetPath(basePath);
+                  req.SetTargetPath(basePath);
                 if (input.Folder != null && !input.Folder.IsVirutal) {
                     req.SetTargetPath(Path.Combine(req.TargetPath, input.Folder.FetchRoutePath(req.TargetPath,!forFile,allowRootAccess, readOnlyMode)));
                 }

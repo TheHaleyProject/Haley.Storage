@@ -9,7 +9,10 @@ namespace Haley.Models {
         public IOSSControlled Client { get; private set; } 
         public IOSSControlled Module { get; private set; }
         public IOSSControlled Workspace { get; private set; } 
-        public IOSSFolderRoute Folder { get; set; }
+        public IOSSFolderRoute Folder { get; protected set; }
+
+        public bool ReadOnlyMode { get; protected set; }
+
         public virtual IOSSRead SetComponent(IOSSControlled input, OSSComponent type) {
             switch (type) {
                 case OSSComponent.Client:
@@ -36,10 +39,18 @@ namespace Haley.Models {
             TargetName = name;
             return this;
         }
-
+        public IOSSRead SetFolder(IOSSFolderRoute folder) {
+            if (folder != null) Folder = folder;
+            return this;
+        }
         public IOSSRead SetTargetPath(string path) {
             if (string.IsNullOrWhiteSpace(path)) return this;
             TargetPath = path;
+            return this;
+        }
+
+        public IOSSRead SetMode(bool readOnly) {
+            ReadOnlyMode = readOnly;
             return this;
         }
 

@@ -87,7 +87,7 @@ namespace Haley.Services {
             result.Result = idxResult.Result;
 
             //if (!string.IsNullOrWhiteSpace(moduleInfo.DatabaseName)) module.SetCUID(moduleInfo.DatabaseName);
-            await RegisterWorkSpace(new OSSControlled(null, OSSControlMode.Guid, OSSParseMode.Generate), client, module);
+            await RegisterWorkSpace(new OSSControlled(null, OSSControlMode.Guid, OSSParseMode.Generate, isVirtual:true), client, module);
             return result;
         }
         public async Task<IFeedback> RegisterWorkSpace(IOSSControlled wspace, IOSSControlled client, IOSSControlled module, OSSControlMode content_control = OSSControlMode.Number, OSSParseMode content_pmode = OSSParseMode.Generate) {

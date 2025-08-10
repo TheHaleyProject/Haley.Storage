@@ -149,8 +149,8 @@ class Testing {
             await dss.RegisterModule("lingam","bcde");
             await dss.RegisterModule("bcde","daep");
             await dss.RegisterModule("arya","daep");
-            await dss.RegisterWorkSpace("common", "daep","bcde",is_virtual:true);
-            await dss.RegisterWorkSpace("demo2", "daep","bcde",OSSControlMode.Guid,OSSParseMode.Generate, is_virtual:true);
+            await dss.RegisterWorkSpace("common", "daep","bcde");
+            await dss.RegisterWorkSpace("demo2", "daep","bcde",OSSControlMode.Guid,OSSParseMode.Generate);
             await dss.RegisterModule(new OSSControlled("test",OSSControlMode.Guid),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("test12"),new OSSControlled("olacabs",OSSControlMode.Guid));
             await dss.RegisterModule(new OSSControlled("contest", OSSControlMode.Guid),new OSSControlled("bcde"));
@@ -172,25 +172,28 @@ class Testing {
             //    Console.WriteLine($@"Status : {status.Status}, Message : {status.Message}");
             //}
 
-            //var dirpath = @"C:\Users\tmp168\Pictures";
+            var dirpath = @"C:\Users\tmp168\Pictures";
 
-            //if (Directory.Exists(dirpath)) {
-            //    foreach (var file in Directory.GetFiles(dirpath)) {
-            //        var status = await dss.Upload(new OSSWriteRequest("daep", "bcde") {
-            //            FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
-            //            ResolveMode = OSSResolveMode.Revise
-            //        }.SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace));
-            //        Console.WriteLine($@"{Environment.NewLine}Status : {status.Status}, Message : {status.Message}, Result : {status.Result?.ToJson() ?? string.Empty}");
-            //    }
-            //}
+            if (Directory.Exists(dirpath)) {
+                foreach (var file in Directory.GetFiles(dirpath)) {
+                    var status = await dss.Upload((IOSSWrite)new OSSWriteRequest("daep", "bcde") {
+                        FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
+                        ResolveMode = OSSResolveMode.Revise
+                        //}.SetComponent(new OSSControlled("common", isVirtual: true), OSSComponent.WorkSpace)
+                    }
+                    .SetFolder(new OSSFolderRoute() { Cuid = "75d20ac5-75e4-11f0-ac34-1860248785f1" }));
+                    Console.WriteLine($@"{Environment.NewLine}Status : {status.Status}, Message : {status.Message}, Result : {status.Result?.ToJson() ?? string.Empty}");
+                    //break;
+                }
+            }
 
-            var dld = await dss.Download((IOSSReadFile)new OSSReadFile("daep", "bcde")
-                //.SetFile(new OSSFileRoute() { Cuid = "39f5288f-75d2-11f0-ac34-1860248785f1" }))
-                //.SetFile(new OSSFileRoute() { Id = 2107 })
-                //.SetFile(new OSSFileRoute() { Name = "avtr_girl_01.jpg" })
-                //.SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace));
-                .SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace)
-                .SetTargetName("airport_v.jpg"));
+            //var dld = await dss.Download((IOSSReadFile)new OSSReadFile("daep", "bcde")
+            //    .SetFile(new OSSFileRoute() { Cuid = "39f5288f-75d2-11f0-ac34-1860248785f1" }));
+            //.SetFile(new OSSFileRoute() { Id = 2107 })
+            //.SetFile(new OSSFileRoute() { Name = "avtr_girl_01.jpg" })
+            //.SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace));
+            //.SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace)
+            //.SetTargetName("airport_v.jpg"));
 
             //var dld = await dss.Download((IOSSReadFile)new OSSReadFile("daep", "bcde")
             //    .SetComponent(new OSSControlled("demo2", isVirtual: true), OSSComponent.WorkSpace)
