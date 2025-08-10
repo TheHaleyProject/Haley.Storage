@@ -175,9 +175,12 @@ namespace Haley.Services {
 
             string targetFileName = string.Empty;
             string targetFilePath = string.Empty;
+            
+
             if (!string.IsNullOrWhiteSpace(input.TargetName)) {
                 targetFileName = Path.GetFileName(input.TargetName);
-            } else if (forupload) {
+            } 
+            else if (forupload) {
                 //We need to see if the filestream is present and take the name from there.
                 if (!string.IsNullOrWhiteSpace(inputW!.FileOriginalName)) {
                     targetFileName = Path.GetFileName(inputW.FileOriginalName);
@@ -187,8 +190,18 @@ namespace Haley.Services {
                 } 
             }
 
-            if (string.IsNullOrWhiteSpace(input.TargetName) && !string.IsNullOrWhiteSpace(targetFileName)) input.SetTargetName(targetFileName);
+            string targetExtension = Path.GetExtension(targetFileName ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(targetExtension) && forupload) {
+                if (!string.IsNullOrWhiteSpace(inputW.FileOriginalName)) {
+                    targetExtension = Path.GetExtension(inputW.FileOriginalName);
+                } else if (inputW.FileStream != null && inputW.FileStream is FileStream fs) {
+                    targetExtension = Path.GetExtension(fs.Name);
+                }
+                if (!string.IsNullOrWhiteSpace(targetExtension)) targetFileName += targetExtension;
+                input.SetTargetName(targetFileName);
+            }
 
+            if (string.IsNullOrWhiteSpace(input.TargetName) && !string.IsNullOrWhiteSpace(targetFileName)) input.SetTargetName(targetFileName);
             
             //If we are trying to upload
             if (input.File == null || string.IsNullOrWhiteSpace(input.File.Path)) {

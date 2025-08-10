@@ -30,23 +30,23 @@ namespace Haley.Services {
                 }
 
                 //What if there is some extension and is missing??
-                if (string.IsNullOrWhiteSpace(Path.GetExtension(gPaths.basePath))) {
-                    string exten = string.Empty;
-                    //Extension is missing. Lets figure out if we have somewhere. 
-                    //Check if target name has it or the origianl filename has it.
-                    do {
-                        exten = Path.GetExtension(input.TargetName);
-                        if (!string.IsNullOrWhiteSpace(exten)) break;
-                        exten = Path.GetExtension(input.FileOriginalName);
-                        if (!string.IsNullOrWhiteSpace(exten)) break;
-                        if (input.FileStream != null && input.FileStream is FileStream fs) {
-                            exten = Path.GetExtension(fs.Name);
-                        }
-                    } while (false); //One time event
-                    if (!string.IsNullOrWhiteSpace(exten) && !gPaths.targetPath.EndsWith(exten)) {
-                        gPaths.targetPath += $@"{exten}";
-                    }
-                }
+                //if (string.IsNullOrWhiteSpace(Path.GetExtension(gPaths.targetPath))) {
+                //    string exten = string.Empty;
+                //    //Extension is missing. Lets figure out if we have somewhere. 
+                //    //Check if target name has it or the origianl filename has it.
+                //    do {
+                //        exten = Path.GetExtension(input.TargetName);
+                //        if (!string.IsNullOrWhiteSpace(exten)) break;
+                //        exten = Path.GetExtension(input.FileOriginalName);
+                //        if (!string.IsNullOrWhiteSpace(exten)) break;
+                //        if (input.FileStream != null && input.FileStream is FileStream fs) {
+                //            exten = Path.GetExtension(fs.Name);
+                //        }
+                //    } while (false); //One time event
+                //    if (!string.IsNullOrWhiteSpace(exten) && !gPaths.targetPath.EndsWith(exten)) {
+                //        gPaths.targetPath += $@"{exten}";
+                //    }
+                //}
 
                 if (input.BufferSize < 4096) input.BufferSize = 4096; //Default CopyTo from System.IO has 80KB buffersize. We setit as 4KB for fast storage.
 

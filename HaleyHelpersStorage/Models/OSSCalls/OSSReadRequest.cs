@@ -6,9 +6,9 @@ namespace Haley.Models {
     public class OSSReadRequest : IOSSRead {
         public string TargetPath { get; protected set; }
         public string TargetName { get; protected set; }
-        public IOSSControlled Client { get; private set; } 
-        public IOSSControlled Module { get; private set; }
-        public IOSSControlled Workspace { get; private set; } 
+        public IOSSControlled Client { get; protected set; } 
+        public IOSSControlled Module { get; protected set; }
+        public IOSSControlled Workspace { get; protected set; } 
         public IOSSFolderRoute Folder { get; protected set; }
         public bool ReadOnlyMode { get; protected set; }
 
@@ -57,7 +57,7 @@ namespace Haley.Models {
         public OSSReadRequest(string client_name) :this(client_name,null,null) { }
         public OSSReadRequest(string client_name,string module_name) :this(client_name, module_name, null) { }
 
-        public  OSSReadRequest(string client_name, string module_name, string workspace_name, bool isWsVirtual = false) {
+        public  OSSReadRequest(string client_name, string module_name, string workspace_name) {
             Client = new OSSControlled(client_name);
             Module = new OSSControlled(module_name).UpdateCUID(Client.DisplayName,module_name);
             Workspace = new OSSControlled(workspace_name).UpdateCUID(Client.DisplayName,Module.DisplayName); //Here nothing matters, because it is an input request. // We need to fetch the information from database and then update this workspace information.
