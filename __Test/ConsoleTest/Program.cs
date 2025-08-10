@@ -156,7 +156,7 @@ class Testing {
             await dss.RegisterModule(new OSSControlled("contest", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterModule(new OSSControlled("test", OSSControlMode.Guid),new OSSControlled("bcde"));
             await dss.RegisterWorkSpace(null,"bcde","lingam");
-            await dss.RegisterWorkSpace("drive","arya","lingam");
+            await dss.RegisterWorkSpace("demo2", "bcde", "lingam",OSSControlMode.None);
             sw.Stop();
             Console.WriteLine($@"Registered all modules & workspaces in {sw.Elapsed.TotalSeconds}");
           
@@ -176,12 +176,12 @@ class Testing {
 
             if (Directory.Exists(dirpath)) {
                 foreach (var file in Directory.GetFiles(dirpath)) {
-                    var status = await dss.Upload((IOSSWrite)new OSSWriteRequest("daep", "bcde") {
+                    var status = await dss.Upload((IOSSWrite)new OSSWriteRequest("bcde", "lingam") {
                         FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
                         ResolveMode = OSSResolveMode.Revise
-                        //}.SetComponent(new OSSControlled("common", isVirtual: true), OSSComponent.WorkSpace)
-                    }
-                    .SetFolder(new OSSFolderRoute() { Cuid = "75d20ac5-75e4-11f0-ac34-1860248785f1" }));
+                    }.SetComponent(new OSSControlled("demo2"), OSSComponent.WorkSpace));
+                    //}
+                    //.SetFolder(new OSSFolderRoute() { Cuid = "75d20ac5-75e4-11f0-ac34-1860248785f1" }));
                     Console.WriteLine($@"{Environment.NewLine}Status : {status.Status}, Message : {status.Message}, Result : {status.Result?.ToJson() ?? string.Empty}");
                     //break;
                 }
