@@ -1,9 +1,11 @@
 ﻿using Haley.Abstractions;
 using System.Collections.Generic;
 using Haley.Enums;
+using Haley.Utils;
 
 namespace Haley.Models {
     public class OSSReadRequest : IOSSRead {
+        public string CallID { get; protected set; } = RandomUtils.GetString(128); //Get a random string.
         public string TargetPath { get; protected set; }
         public string TargetName { get; protected set; }
         public IOSSControlled Client { get; protected set; } 

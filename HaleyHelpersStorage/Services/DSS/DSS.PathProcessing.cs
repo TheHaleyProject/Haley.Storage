@@ -216,6 +216,8 @@ namespace Haley.Services {
                     holder,
                     uidManager: (h) => {
                         if (Indexer == null || !forupload) return (0, Guid.Empty); //When we are not uploading, then no point in registering in the database.
+                        //TODO: All registration should happen only inside a transaction and should be properly disposed at the end of execution.
+                        //IMPLEMENT A CALL ID IN THE BASE, SO THAT WE HAVE A REFERENCE THROUGHOUTABOUT WHICH CALL IS BEING REFERENCED.
                         return Indexer.RegisterDocuments(input, h);
                     },
                     splitProvider: SplitProvider,
