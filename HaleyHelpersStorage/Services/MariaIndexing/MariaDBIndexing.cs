@@ -34,6 +34,7 @@ namespace Haley.Utils {
         const string DB_CLIENT_SEARCH_TERM = "dss_client";
         const string DB_SQL_FILE_LOCATION = "Resources";
         public const string DB_MODULE_NAME_PREFIX = "dssm_";
+        ConcurrentDictionary<string, (ITransactionHandler handler, DateTime created)> _handlers = new ConcurrentDictionary<string, (ITransactionHandler handler, DateTime created)>();
         ILogger _logger;
         string _key;
         IAdapterGateway _agw;
@@ -45,6 +46,25 @@ namespace Haley.Utils {
             _agw = agw;
             _logger = logger;
             ThrowExceptions = throwExceptions;
+        }
+        public IFeedback FinalizeTransaction(string id, bool commit = true) {
+                Feedback result = new Feedback();
+            try {
+                if (!_handlers.ContainsKey(id)) return result.SetMessage($@"No handler found with the provided key {id}");
+                if (commit) {
+                    _handlers[id].handler?.Commit();
+                    result.SetStatus(true).SetMessage("Committed successfully");
+                } else {
+                    _handlers[id].handler?.Rollback();
+                    result.SetStatus(false).SetMessage("Rolled back successfully");
+                }
+                return result;
+            } catch (Exception ex) {
+                _logger?.LogError(ex.Message);
+                return result.SetStatus(false).SetMessage(ex.Message);
+            } finally {
+                if (_handlers.ContainsKey(id)) _handlers.Remove(id, out _);
+            }
         }
     }
 }
