@@ -73,7 +73,7 @@ namespace Haley.Utils {
             //if (cexists == null || !(cexists is int clientId)) throw new ArgumentException($@"Client {info.Client.Name} doesn't exist. Unable to index the module {info.DisplayName}.");
             //var mexists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS }, (NAME, info.Name), (PARENT, clientId));
             var exists = await _agw.Scalar(new AdapterArgs(_key) { Query = MODULE.EXISTS_BY_CUID }, (CUID,info.Cuid));
-            if (exists != null && exists is long mId) {
+            if (exists != null && long.TryParse(exists.ToString(),out var mId)) {
                 //Module exists. .just update it.
                 await _agw.NonQuery(new AdapterArgs(_key) { Query = MODULE.UPDATE }, (DNAME, info.DisplayName), (PATH, info.Path), (ID, mId));
             } else {

@@ -47,23 +47,29 @@ namespace Haley.Utils {
             _logger = logger;
             ThrowExceptions = throwExceptions;
         }
-        public IFeedback FinalizeTransaction(string id, bool commit = true) {
+        public IFeedback FinalizeTransaction(string callId, bool commit = true) {
                 Feedback result = new Feedback();
             try {
-                if (!_handlers.ContainsKey(id)) return result.SetMessage($@"No handler found with the provided key {id}");
-                if (commit) {
-                    _handlers[id].handler?.Commit();
-                    result.SetStatus(true).SetMessage("Committed successfully");
-                } else {
-                    _handlers[id].handler?.Rollback();
-                    result.SetStatus(false).SetMessage("Rolled back successfully");
+                //All handers are stored in below format : callId###dbid
+                //because one call can be using multiple db as well.
+                if (string.IsNullOrWhiteSpace(callId)) return result.SetMessage("callID cannot be empty for this operation");
+                var keyPrefix = callId.ToLower() + "###";
+
+                foreach (var key in _handlers.Keys.Where(p=> p.StartsWith(keyPrefix))) {
+                        if (commit) {
+                        _handlers[key].handler?.Commit();
+                    } else {
+                        _handlers[key].handler?.Rollback();
+                    }
                 }
+
+                result.SetStatus(true).SetMessage(commit ? "Commited Successfully" : "Rolled back successfully");
                 return result;
             } catch (Exception ex) {
                 _logger?.LogError(ex.Message);
                 return result.SetStatus(false).SetMessage(ex.Message);
             } finally {
-                if (_handlers.ContainsKey(id)) _handlers.Remove(id, out _);
+                if (_handlers.ContainsKey(callId)) _handlers.Remove(callId, out _);
             }
         }
     }

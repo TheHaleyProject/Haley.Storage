@@ -90,10 +90,14 @@ namespace Haley.Services {
                 result.Message = ex.Message;
                 result.Status = false;
             } finally {
-                if (input != null && Indexer != null && input.Module != null && input.File != null) {
+                if (Indexer != null && input != null && input.Module != null && input.File != null) {
                     //We try to make a call to the db to update the information about the file version info.
-                    var upInfo = await Indexer.UpdateDocVersionInfo(input.Module.Cuid, input.File);
-                    Console.WriteLine($@"Document version update status: {upInfo.Status} {Environment.NewLine} Result : {upInfo.Result.ToString()}");
+                    //Here we try to check if the handler is available and then throw them out.
+                    
+                    var upInfo = await Indexer.UpdateDocVersionInfo(input.Module.Cuid, input.File,input.CallID);
+
+                    if (Indexer is MariaDBIndexing mdIdx) mdIdx.FinalizeTransaction(input.CallID, !(upInfo == null || upInfo.Status == false));
+                    Console.WriteLine($@"Document version update status: {upInfo?.Status} {Environment.NewLine} Result : {upInfo?.Result?.ToString()}");
                 }
             }
             return result;

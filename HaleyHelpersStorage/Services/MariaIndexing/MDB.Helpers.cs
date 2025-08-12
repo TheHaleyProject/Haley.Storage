@@ -40,7 +40,7 @@ namespace Haley.Utils {
                 () => (INSTANCE.WORKSPACE.EXISTS, Consolidate((ID, wspace.Id))),
                 () => (INSTANCE.WORKSPACE.INSERT, Consolidate((ID, wspace.Id))),
                 readOnly:request.ReadOnlyMode,
-                $@"Unable to insert the workspace  {wspace.Id}");
+                $@"Unable to insert the workspace  {wspace.Id}"); //Workspace registration can happen without transaction, as it might be needed for other items later.
             return (true, wspace.Id);
         }
 
@@ -62,44 +62,55 @@ namespace Haley.Utils {
                         return (INSTANCE.DIRECTORY.EXISTS, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName)));
                     var query = dirId < 1 ? INSTANCE.DIRECTORY.EXISTS_BY_CUID : INSTANCE.DIRECTORY.EXISTS_BY_ID;
                     return (query, Consolidate((VALUE, dirId < 1 ? dirCuid : dirId)));
-                    },
+                },
                 () => (INSTANCE.DIRECTORY.INSERT, Consolidate((WSPACE, ws_id), (PARENT, dirParent), (NAME, dirDbName), (DNAME, dirName))),
                 readOnly: request.ReadOnlyMode,
-                $@"Unable to insert the directory {dirName} to the workspace : {ws_id}");
+                $@"Unable to insert the directory {dirName} to the workspace : {ws_id}"); //Directory registration, same as the workspace doesn't need any transaction as it might be needed by other systems.
 
             return (true, (dirInfo.id, dirInfo.uid));
         }
 
-        async Task<long> InsertAndFetchIDScalar(string dbid, Func<(string query,(string key,object value)[] parameters)> check, Func<(string query, (string key, object value)[] parameters)> insert = null, bool readOnly = false, string failureMessage = "Error", bool preCheck = true) {
+        ITransactionHandler GetTransactionHandlerCache(string callId, string dbid) {
+            if (string.IsNullOrWhiteSpace(callId) || string.IsNullOrWhiteSpace(dbid)) return null;
+            var key = GetHandlerKey(callId, dbid);
+            if (!_handlers.ContainsKey(key)) return null;
+            //If handler was created long back, then remove it.
+            return _handlers[key].handler;
+        }
+
+        async Task<long> InsertAndFetchIDScalar(string dbid, Func<(string query,(string key,object value)[] parameters)> check, Func<(string query, (string key, object value)[] parameters)> insert = null, bool readOnly = false, string failureMessage = "Error", bool preCheck = true,string callId = null) {
             if (check == null) return 0;
-           
+            ITransactionHandler handler = GetTransactionHandlerCache(callId, dbid);
+
             var checkInput = check.Invoke();
             object info = null;
-            if (preCheck) info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }, checkInput.parameters);
+            if (preCheck) info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }.ForTransaction(handler,false) , checkInput.parameters);
 
             if (info == null) {
                 if (insert == null || readOnly) return 0;
                 var insertInput = insert.Invoke();
-                await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }, insertInput.parameters);
-                info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }, checkInput.parameters);
+                await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }.ForTransaction(handler,false), insertInput.parameters);
+
+                info = await _agw.Scalar(new AdapterArgs(dbid) { Query = checkInput.query }.ForTransaction(handler,false), checkInput.parameters);
             }
             long id = 0;
             if (info == null || !long.TryParse(info.ToString(), out id)) throw new Exception($@"{failureMessage} from the database {dbid}");
             return id;
         }
 
-        async Task<(long id, string uid)> InsertAndFetchIDRead(string dbid, Func<(string query, (string key, object value)[] parameters)> check = null, Func<(string query, (string key, object value)[] parameters)> insert = null, bool readOnly = false, string failureMessage = "Error", bool preCheck = true) {
+        async Task<(long id, string uid)> InsertAndFetchIDRead(string dbid, Func<(string query, (string key, object value)[] parameters)> check = null, Func<(string query, (string key, object value)[] parameters)> insert = null, bool readOnly = false, string failureMessage = "Error", bool preCheck = true, string callId = null) {
             if (check == null) return (0, string.Empty);
             var checkInput = check.Invoke();
+            ITransactionHandler handler = GetTransactionHandlerCache(callId, dbid);
 
             object info = null;
-            if (preCheck) info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }, checkInput.parameters);
+            if (preCheck) info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }.ForTransaction(handler,false), checkInput.parameters);
 
             if (info == null || !(info is Dictionary<string, object> dic1) || dic1.Count < 1) {
                 if (insert == null || readOnly) return (0, string.Empty);
                 var insertInput = insert.Invoke();
-                await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }, insertInput.parameters);
-                info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }, checkInput.parameters);
+                await _agw.NonQuery(new AdapterArgs(dbid) { Query = insertInput.query }.ForTransaction(handler, false), insertInput.parameters);
+                info = await _agw.Read(new AdapterArgs(dbid) { Query = checkInput.query, Filter = ResultFilter.FirstDictionary }.ForTransaction(handler, false), checkInput.parameters);
             }
             long id = 0;
             if (info == null || !(info is Dictionary<string, object> dic) || dic.Count < 1) throw new Exception($@"{failureMessage} from the database {dbid}");
@@ -122,10 +133,10 @@ namespace Haley.Utils {
             var dbid = request.Module.Cuid;
 
             //Extension Exists?
-            long extId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.EXTENSION.EXISTS, Consolidate((NAME, ext))), () => (INSTANCE.EXTENSION.INSERT,Consolidate((NAME, ext))), readOnly:request.ReadOnlyMode, $@"Unable to fetch extension id for {ext}");
+            long extId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.EXTENSION.EXISTS, Consolidate((NAME, ext))), () => (INSTANCE.EXTENSION.INSERT, Consolidate((NAME, ext))), readOnly: request.ReadOnlyMode, $@"Unable to fetch extension id for {ext}");
 
             // Name Exists ?
-            long nameId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.VAULT.EXISTS, Consolidate((NAME, name))), () => (INSTANCE.VAULT.INSERT, Consolidate((NAME, name))),readOnly:request.ReadOnlyMode, $@"Unable to fetch name id for {name}");
+            long nameId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.VAULT.EXISTS, Consolidate((NAME, name))), () => (INSTANCE.VAULT.INSERT, Consolidate((NAME, name))), readOnly: request.ReadOnlyMode, $@"Unable to fetch name id for {name}");
 
             //Namestore Exists?
             long nsId = await InsertAndFetchIDScalar(dbid, () => (INSTANCE.NAMESTORE.EXISTS, Consolidate((NAME, nameId), (EXT, extId))), () => (INSTANCE.NAMESTORE.INSERT, Consolidate((NAME, nameId), (EXT, extId))), readOnly: request.ReadOnlyMode, $@"Unable to fetch name store id for name : {name} and extension : {ext}");
@@ -133,11 +144,26 @@ namespace Haley.Utils {
             return (true, nsId);
         }
 
+        string GetHandlerKey(string callid, string dbid) {
+            return $@"{callid.ToLower()}###{dbid.ToLower()}";
+        }
+
         async Task<(long id,Guid guid)> RegisterDocumentsInternal(IOSSRead request, IOSSControlled holder) {
             try {
                 if (request.ReadOnlyMode) throw new ArgumentException("Cannot register a document in readonly mode");
                 //If we are in ParseMode, we still do all the process, but, store the file as is with Parsing information.
                 //For parse mode, let us not throw any exception.
+                //Generate a handler.
+                var dbid = request.Module.Cuid;
+                var handlerKey = GetHandlerKey(request.CallID, dbid);
+                var handler = _agw.GetTransactionHandler(dbid);
+
+                if (handler != null) {
+                    if (_handlers.ContainsKey(handlerKey)) throw new Exception($@"A similar transaction with same key already exists: {handlerKey}");
+                    _handlers.TryAdd(handlerKey, (handler, DateTime.UtcNow));
+                    handler.Begin();
+                }
+
                 (long id, Guid guid) result = (0, Guid.Empty);
                 var ws = await EnsureWorkSpace(request);
                 if (!ws.status) return result;
@@ -145,9 +171,8 @@ namespace Haley.Utils {
                 if (!dir.status) return result;
                 var ns = await EnsureNameStore(request);
                 if (!ns.status) return result;
-
-                var dbid = request.Module.Cuid;
-                var docInfo = await InsertAndFetchIDRead(dbid,() => (INSTANCE.DOCUMENT.EXISTS, Consolidate((PARENT, dir.result.id), (NAME, ns.id))));
+              
+                var docInfo = await InsertAndFetchIDRead(dbid,() => (INSTANCE.DOCUMENT.EXISTS, Consolidate((PARENT, dir.result.id), (NAME, ns.id))), callId: request.CallID);
                 bool docExists = docInfo.id != 0;
                 if (!docExists) {
                     // Insert it.
@@ -155,16 +180,16 @@ namespace Haley.Utils {
                         () => (INSTANCE.DOCUMENT.EXISTS, Consolidate((PARENT, dir.result.id), (NAME, ns.id))),
                         ()=> (INSTANCE.DOCUMENT.INSERT, Consolidate((WSPACE,ws.id), (PARENT, dir.result.id), (NAME, ns.id))),
                          readOnly: request.ReadOnlyMode,
-                        $@"Unable to insert document with name {request.TargetName}",false);
+                        $@"Unable to insert document with name {request.TargetName}",false, callId: request.CallID);
                     var dname = Path.GetFileName(request.TargetName);
-                    await _agw.NonQuery(new AdapterArgs(dbid) { Query = INSTANCE.DOCUMENT.INSERT_INFO }, (PARENT, docInfo.id), (DNAME, dname));
+                    await _agw.NonQuery(new AdapterArgs(dbid) { Query = INSTANCE.DOCUMENT.INSERT_INFO }.ForTransaction(handler), (PARENT, docInfo.id), (DNAME, dname));
                 }
 
                 int version = 1;
                 //If Doc exists.. we just need to revise the version.
                 if (docExists) {
                     //Assuming that there is a version. Get the latest version.
-                    var currentVersion = await _agw.Scalar(new AdapterArgs(dbid) { Query = INSTANCE.DOCVERSION.FIND_LATEST }, (PARENT, docInfo.id));
+                    var currentVersion = await _agw.Scalar(new AdapterArgs(dbid) { Query = INSTANCE.DOCVERSION.FIND_LATEST }.ForTransaction(handler), (PARENT, docInfo.id));
                     if (currentVersion != null && int.TryParse(currentVersion.ToString(),out int cver)) {
                         version = ++cver;
                     }
@@ -174,7 +199,7 @@ namespace Haley.Utils {
                     () => (INSTANCE.DOCVERSION.EXISTS, Consolidate((PARENT, docInfo.id), (VERSION, version))),
                     () => (INSTANCE.DOCVERSION.INSERT, Consolidate((PARENT, docInfo.id), (VERSION, version))),
                      readOnly: request.ReadOnlyMode,
-                    $@"Unable to insert document version for the document {docInfo.id}", false);
+                    $@"Unable to insert document version for the document {docInfo.id}", false, callId: request.CallID);
 
                 if (dvInfo.id > 0 && !string.IsNullOrWhiteSpace(dvInfo.uid)) {
                     //Check if the incoming uid is in proper GUID format.
@@ -193,6 +218,12 @@ namespace Haley.Utils {
                 return result;
             } catch (Exception ex) {
                 _logger?.LogError(ex.Message);
+                var dbid = request.Module.Cuid;
+                var handlerKey = GetHandlerKey(request.CallID, dbid);
+                if (!string.IsNullOrWhiteSpace(handlerKey) && _handlers.ContainsKey(handlerKey)) {
+                    _handlers[handlerKey].handler?.Rollback(); //roll everything back.
+                    _handlers.Remove(handlerKey,out _);
+                }
                 if (ThrowExceptions) throw ex; //For Parse mode, let us not throw any exceptions.
                 return (0, Guid.Empty);
             }

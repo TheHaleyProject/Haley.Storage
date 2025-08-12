@@ -179,7 +179,7 @@ class Testing {
                     var status = await dss.Upload((IOSSWrite)new OSSWriteRequest("bcde", "lingam") {
                         FileStream = new FileStream(file, FileMode.Open, FileAccess.Read),
                         ResolveMode = OSSResolveMode.Revise
-                    }.SetComponent(new OSSControlled("demo2"), OSSComponent.WorkSpace));
+                    }.SetFile(new OSSFileRoute() { Cuid = "24a7ae50-7766-11f0-ac34-1860248785f1" }));
                     //}
                     //.SetFolder(new OSSFolderRoute() { Cuid = "75d20ac5-75e4-11f0-ac34-1860248785f1" }));
                     Console.WriteLine($@"{Environment.NewLine}Status : {status.Status}, Message : {status.Message}, Result : {status.Result?.ToJson() ?? string.Empty}");

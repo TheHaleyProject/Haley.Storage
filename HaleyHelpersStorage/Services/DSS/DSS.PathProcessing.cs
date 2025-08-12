@@ -139,7 +139,9 @@ namespace Haley.Services {
             }
             
             //If the workspace is managed, then we have the possibility to get the path from the database.
-            if (!forupload && (wInfo?.ContentControl != OSSControlMode.None || input.File != null)) {
+            if ((!forupload || ! string.IsNullOrWhiteSpace(input.File?.Cuid)) && (wInfo?.ContentControl != OSSControlMode.None || input.File != null)) {
+
+                //REVISION : string.IsNullOrWhiteSpace(input.File?.Cuid) THIS INDICATES WE ARE TRYING TO SEND A FILE FOR REVISION
                 if (!string.IsNullOrWhiteSpace(input.File?.Cuid) || input.File?.Id > 0) {
                     //So, the workspace is partially or fully managed.
                     var existing = input.File.Id > 0 ?
