@@ -37,10 +37,9 @@ namespace Haley.Utils {
             } else {
                 return _cache.TryAdd(dirInfo.Cuid, dirInfo);
             }
-            return true;
         }
         public bool TryGetComponentInfo<T>(string key, out T component) where T : IOSSDirectory {
-            component = default(T);
+            component = default;
             if (string.IsNullOrWhiteSpace(key) || !_cache.ContainsKey(key)) return false;
             var data = _cache[key];
             if (data == null || !(data is T)) return false;

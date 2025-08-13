@@ -2,6 +2,7 @@
 using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
+using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
 
 namespace Haley.Services {
@@ -130,5 +131,53 @@ namespace Haley.Services {
             return result;
         }
        
+        public async Task<IFeedback> RegisterFromSource(IConfigurationSection section =null) {
+            try {
+                var result = new Feedback();
+                if (section == null) {
+                    section = ResourceUtils.GenerateConfigurationRoot()?.GetSection(OSSConstants.CONFIG_SOURCE);
+                    if (section == null) return result.SetMessage("Cannot proceed with empty configuration");
+                }
+                var sources = section.AsDictionaryList();
+                var sourceList = sources
+                    .Where(p => p.Count > 0 && p.First().Value is Dictionary<string, object>)
+                    .Select(q => ((Dictionary<string, object>)q.First().Value).Map<DSSRegInfo>())
+                    .ToList();
+                if (sourceList == null || sourceList.Count < 0) return result.SetMessage("Unable to parse registration info from the given configuration section.");
+
+                var clients = new List<string>();
+                var modules = new List<string>();
+                var wspaces = new List<string>();
+
+                foreach (var source in sourceList) {
+                    //Register client
+                    if (string.IsNullOrWhiteSpace(source.Client)) continue; //Client is mandatory
+                    var cliKey = source.Client.ToDBName();
+                    if (!clients.Contains(cliKey)) {
+                        if (!(await RegisterClient(source.Client, source.Password)).Status) continue;
+                        clients.Add(cliKey);
+                    }
+
+                    //Register Module
+                    if (string.IsNullOrWhiteSpace(source.Module)) continue; //Module is mandatory
+                    var modKey = $"{cliKey}_{source.Module.ToDBName()}";
+                    if (!modules.Contains(modKey)) {
+                        if (!(await RegisterModule(source.Module, source.Client)).Status) continue;
+                        modules.Add(modKey);
+                    }
+
+                    //Register Workspace
+                    if (string.IsNullOrWhiteSpace(source.Workspace)) continue; //Workspace is mandatory
+                    var wsKey = $"{modKey}_{source.Workspace.ToDBName()}";
+                    if (!wspaces.Contains(wsKey)) {
+                        if (!(await RegisterWorkSpace(source.Workspace, source.Client, source.Module, source.Control, source.Parse, source.IsVirtual)).Status) continue;
+                        wspaces.Add(wsKey);
+                    }
+                }
+                return result.SetStatus(true).SetMessage("Successfully registered.");
+            } catch (Exception ex) {
+                return new Feedback().SetMessage(ex.ToString());
+            }
+        }
     }
 }
