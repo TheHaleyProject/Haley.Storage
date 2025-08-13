@@ -90,7 +90,7 @@ namespace Haley.Services {
                 result.Message = ex.Message;
                 result.Status = false;
             } finally {
-                if (Indexer != null && input != null && input.Module != null && input.File != null) {
+                if (WriteMode && Indexer != null && input != null && input.Module != null && input.File != null) {
                     //We try to make a call to the db to update the information about the file version info.
                     //Here we try to check if the handler is available and then throw them out.
                     
