@@ -145,7 +145,7 @@ namespace Haley.Utils {
         }
 
         string GetHandlerKey(string callid, string dbid) {
-            return $@"{callid.ToLower()}###{dbid.ToLower()}";
+            return $@"{callid}###{dbid.ToLower()}";
         }
 
         async Task<(long id,Guid guid)> RegisterDocumentsInternal(IOSSRead request, IOSSControlled holder) {

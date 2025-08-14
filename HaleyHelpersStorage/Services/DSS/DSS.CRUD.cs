@@ -23,6 +23,7 @@ namespace Haley.Services {
                     return result;
                 }
 
+                input.GenerateCallId(); //Let us generate a call id here, because when called from outside, it might end up have same call id again and again.
                 var gPaths = ProcessAndBuildStoragePath(input, true);
                 if (string.IsNullOrWhiteSpace(input.TargetPath)) {
                     result.Message = "Unable to generate the final storage path. Please check inputs.";
@@ -90,13 +91,15 @@ namespace Haley.Services {
                 result.Message = ex.Message;
                 result.Status = false;
             } finally {
-                if (WriteMode && Indexer != null && input != null && input.Module != null && input.File != null) {
+                IFeedback upInfo = null;
+                if (WriteMode && Indexer != null && input != null && input.Module != null) {
                     //We try to make a call to the db to update the information about the file version info.
                     //Here we try to check if the handler is available and then throw them out.
-                    
-                    var upInfo = await Indexer.UpdateDocVersionInfo(input.Module.Cuid, input.File,input.CallID);
+                    if (input.File != null) {
+                        upInfo = await Indexer.UpdateDocVersionInfo(input.Module.Cuid, input.File, input.CallID);
+                    }
 
-                    if (Indexer is MariaDBIndexing mdIdx) mdIdx.FinalizeTransaction(input.CallID, !(upInfo == null || upInfo.Status == false));
+                    if (Indexer is MariaDBIndexing mdIdx && upInfo != null) mdIdx.FinalizeTransaction(input.CallID, !(upInfo == null || upInfo.Status == false));
                     Console.WriteLine($@"Document version update status: {upInfo?.Status} {Environment.NewLine} Result : {upInfo?.Result?.ToString()}");
                 }
             }

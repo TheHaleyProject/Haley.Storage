@@ -48,12 +48,13 @@ namespace Haley.Utils {
             ThrowExceptions = throwExceptions;
         }
         public IFeedback FinalizeTransaction(string callId, bool commit = true) {
-                Feedback result = new Feedback();
+            Feedback result = new Feedback();
+            List<string> toremove = new List<string>();
             try {
                 //All handers are stored in below format : callId###dbid
                 //because one call can be using multiple db as well.
                 if (string.IsNullOrWhiteSpace(callId)) return result.SetMessage("callID cannot be empty for this operation");
-                var keyPrefix = callId.ToLower() + "###";
+                var keyPrefix = callId + "###";
 
                 foreach (var key in _handlers.Keys.Where(p=> p.StartsWith(keyPrefix))) {
                         if (commit) {
@@ -61,6 +62,7 @@ namespace Haley.Utils {
                     } else {
                         _handlers[key].handler?.Rollback();
                     }
+                        toremove.Add(key);
                 }
 
                 result.SetStatus(true).SetMessage(commit ? "Commited Successfully" : "Rolled back successfully");
@@ -69,7 +71,9 @@ namespace Haley.Utils {
                 _logger?.LogError(ex.Message);
                 return result.SetStatus(false).SetMessage(ex.Message);
             } finally {
-                if (_handlers.ContainsKey(callId)) _handlers.Remove(callId, out _);
+                foreach (var key in toremove) {
+                    if (_handlers.ContainsKey(key)) _handlers.Remove(key, out _);
+                }
             }
         }
     }

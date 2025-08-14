@@ -5,7 +5,8 @@ using Haley.Utils;
 
 namespace Haley.Models {
     public class OSSReadRequest : IOSSRead {
-        public string CallID { get; protected set; } = RandomUtils.GetString(128); //Get a random string.
+        bool callIdGenerated;
+        public string CallID { get; protected set; } = Guid.NewGuid().ToString();
         public string TargetPath { get; protected set; }
         public string TargetName { get; protected set; }
         public IOSSControlled Client { get; protected set; } 
@@ -13,6 +14,12 @@ namespace Haley.Models {
         public IOSSControlled Workspace { get; protected set; } 
         public IOSSFolderRoute Folder { get; protected set; }
         public bool ReadOnlyMode { get; protected set; }
+        public bool GenerateCallId() {
+            if (callIdGenerated) return false;
+            CallID = Guid.NewGuid().ToString();
+            callIdGenerated = true;
+            return true;
+        }
 
         public virtual IOSSRead SetComponent(IOSSControlled input, OSSComponent type) {
             switch (type) {
