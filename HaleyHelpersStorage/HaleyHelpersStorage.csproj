@@ -62,7 +62,7 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="Haley.Helpers" Version="2.3.8.7" />
+        <PackageReference Include="Haley.Helpers" Version="2.3.9" />
       </ItemGroup>
     </Otherwise>
   </Choose>
