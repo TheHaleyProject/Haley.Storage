@@ -52,18 +52,19 @@ namespace Haley.Services {
                 if (input.BufferSize < 4096) input.BufferSize = 4096; //Default CopyTo from System.IO has 80KB buffersize. We setit as 4KB for fast storage.
 
                 if (input.FileStream == null) throw new ArgumentException($@"File stream is null. Nothing to save.");
-                input.FileStream.Position = 0; //Precaution
+                //input.FileStream.Position = 0; //Precaution
 
                 if (input.TargetPath == gPaths.basePath) throw new ArgumentException($@"No file save name is processed.");
 
                 if (!ShouldProceedFileUpload(result, input.TargetPath, input.ResolveMode)) return result;
 
                 //Either file doesn't exists.. or exists and replace
+                bool fsOperation = false;
 
                 if (!result.PhysicalObjectExists || input.ResolveMode == OSSResolveMode.Replace) {
                     //TODO : DEFERRED REPLACEMENT
                     //If the file is currently in use, try for 5 times and then replace. May be easy option would be to store in temporary place and then update a database that a temporary file is created and then later, with some background process check the database and try to replace. This way we dont' have to block the api call or wait for completion.
-                    await input.FileStream?.TryReplaceFileAsync(input.TargetPath, input.BufferSize);
+                    fsOperation = await input.FileStream?.TryReplaceFileAsync(input.TargetPath, input.BufferSize);
                 } else if (input.ResolveMode == OSSResolveMode.Revise) {
                     //Then we revise the file and store in same location.
                     //First get the current version name.. and then 
@@ -74,18 +75,18 @@ namespace Haley.Services {
                             //First copy the current file to new version path and then 
                             if (await DirectoryUtils.TryCopyFileAsync(input.TargetPath, version_path)) {
                                 //Copy success
-                                await input.FileStream?.TryReplaceFileAsync(input.TargetPath, input.BufferSize);
+                                fsOperation = await input.FileStream?.TryReplaceFileAsync(input.TargetPath, input.BufferSize);
                             }
                         } catch (Exception) {
-                            await DirectoryUtils.TryDeleteFile(version_path);
+                            fsOperation = await DirectoryUtils.TryDeleteFile(version_path);
                         }
                     }
                 }
 
                 if (!result.PhysicalObjectExists) {
-                    result.Message = "Uploaded."; //For skip also, we will return true (but object will exists)
+                    result.Message = fsOperation ? "Uploaded." : "Failed"; //For skip also, we will return true (but object will exists)
                 }
-                result.Status = true;
+                result.Status = fsOperation;
                 if (input.File != null) result.SetResult(input.File);
             } catch (Exception ex) {
                 result.Message = ex.Message;
@@ -95,11 +96,13 @@ namespace Haley.Services {
                 if (WriteMode && Indexer != null && input != null && input.Module != null) {
                     //We try to make a call to the db to update the information about the file version info.
                     //Here we try to check if the handler is available and then throw them out.
-                    if (input.File != null) {
+                    if (input.File != null && result.Status) {
                         upInfo = await Indexer.UpdateDocVersionInfo(input.Module.Cuid, input.File, input.CallID);
                     }
 
-                    if (Indexer is MariaDBIndexing mdIdx && upInfo != null) mdIdx.FinalizeTransaction(input.CallID, !(upInfo == null || upInfo.Status == false));
+                    if (Indexer is MariaDBIndexing mdIdx) {
+                        mdIdx.FinalizeTransaction(input.CallID, result.Status && !(upInfo == null || upInfo.Status == false));
+                    }
                     Console.WriteLine($@"Document version update status: {upInfo?.Status} {Environment.NewLine} Result : {upInfo?.Result?.ToString()}");
                 }
             }
