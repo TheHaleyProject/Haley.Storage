@@ -166,6 +166,8 @@ namespace Haley.Services {
                         //We retrieved the information from DB. Just fetch the path.
                         if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
                             if (input.File == null) input.SetFile(new OSSFileRoute(input.TargetName,string.Empty) {Cuid = dic["uid"]?.ToString() });
+                            if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid =   dic["uid"]?.ToString();
+                            if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = searchName;
                             input.File.Path = dic["path"].ToString();
                             if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
                             input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
