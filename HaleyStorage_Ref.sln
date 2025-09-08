@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HaleyExtensions", "..\Haley
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HaleyHelpersDB", "..\HaleyHelpers.DB\HaleyHelpersDB\HaleyHelpersDB.csproj", "{A8EB4B9D-7F4F-3AEC-B7E3-FD16E385F8ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HaleyHelpersStorage", "HaleyHelpersStorage\HaleyHelpersStorage.csproj", "{74DC1F4E-D789-4867-B2D1-80B8D7913FEC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HaleyStorage", "HaleyStorage\HaleyStorage.csproj", "{74DC1F4E-D789-4867-B2D1-80B8D7913FEC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

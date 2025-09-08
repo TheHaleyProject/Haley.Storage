@@ -8,7 +8,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Authors>TheHaleyProject</Authors>
     <Company>TheHaleyProject</Company>
-    <AssemblyName>Haley.Helpers.Storage</AssemblyName>
+    <AssemblyName>Haley.Storage</AssemblyName>
     <Copyright>Haley 2025</Copyright>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\HaleyProject\HaleyProject.snk</AssemblyOriginatorKeyFile>
@@ -16,8 +16,8 @@
     <Version>0.0.1</Version>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageProjectUrl>https://github.com/TheHaleyProject/HaleyHelpers.Storage</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/TheHaleyProject/HaleyHelpers.Storage</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/TheHaleyProject/Haley.Storage</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/TheHaleyProject/Haley.Storage</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Description>A storage service provider</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
