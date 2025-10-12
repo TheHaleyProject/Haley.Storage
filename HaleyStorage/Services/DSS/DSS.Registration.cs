@@ -18,6 +18,7 @@ namespace Haley.Services {
         }
 
         public async Task<IFeedback> RegisterClient(IOSSControlled client, string password = null) {
+            var result = new Feedback();
             //Password will be stored in the .dss.meta file
             if (client == null) return new Feedback(false, "Name cannot be empty");
             if (!client.TryValidate(out var msg)) return new Feedback(false, msg);
@@ -32,19 +33,19 @@ namespace Haley.Services {
             if (!Directory.Exists(path) && WriteMode) {
                 Directory.CreateDirectory(path); //Create the directory only if write mode is enabled or else, we just try to store the information in cache.
             }
-
+            
+            if (!Directory.Exists(path)) result.SetStatus(false).SetMessage("Directory was not created. Check if WriteMode is ON Or make sure proper access is availalbe");
             var signing = RandomUtils.GetString(512);
             var encrypt = RandomUtils.GetString(512);
             var pwdHash = HashUtils.ComputeHash(password, HashMethod.Sha256);
-            var result = new Feedback(true, $@"Client {client.DisplayName} is registered");
+            
 
             var clientInfo = client.MapProperties(new OSSClient(pwdHash, signing, encrypt,client.DisplayName) { Path = cInput.path });
             if (WriteMode) {
                 var metaFile = Path.Combine(path, CLIENTMETAFILE);
                 File.WriteAllText(metaFile, clientInfo.ToJson());   // Over-Write the keys here.
             }
-
-            if (!Directory.Exists(path)) result.SetStatus(false).SetMessage("Directory was not created. Check if WriteMode is ON Or make sure proper access is availalbe");
+            result.SetStatus(true).SetMessage($@"Client {client.DisplayName} is registered");
 
             if (!result.Status || Indexer == null) return result;
             var idxResult = await Indexer.RegisterClient(clientInfo);

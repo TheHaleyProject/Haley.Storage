@@ -48,35 +48,29 @@ namespace Haley.Utils
                 }
             }
             
-            var result = PreparePath(nObj.SaveAsName, splitProvider, nObj.ControlMode);
-            
-            //If extension is missing, check for extension. (only for controlled paths, extension would be missing)
-            if (nObj.ControlMode != OSSControlMode.None) {
-                
-                if (!string.IsNullOrWhiteSpace(suffix)) {
-                    //If we are dealing with number and also inside some kind of control mode, add suffix.
-                    result += $@"{suffix}"; //Never get _ as suffix.
-                }
-
-                //Populate methods would have removed the Extensions. We add them back.
-                var extension = Path.GetExtension(nObj.Name);
-
-                //Add extension if exists.
-                if (!string.IsNullOrWhiteSpace(extension)) {
-                    result += $@"{extension}";
-                }
-            }
+            var result = PreparePath(nObj.SaveAsName, splitProvider, nObj.ControlMode,suffix,Path.GetExtension(nObj.Name));
 
             //We add suffix for all controlled paths.
             return (nObj.SaveAsName, result);
         }
 
-        public static string PreparePath(string input, Func<bool, (int length, int depth)> splitProvider = null, OSSControlMode control_mode = OSSControlMode.None) {
+        public static string PreparePath(string input, Func<bool, (int length, int depth)> splitProvider = null, OSSControlMode control_mode = OSSControlMode.None, string suffix = null, string extension = null) {
             if (string.IsNullOrWhiteSpace(input) || control_mode == OSSControlMode.None) return input;
             if (splitProvider == null) splitProvider = defaultSplitProvider;
             bool isNumber = input.IsNumber();
             var sinfo = splitProvider(isNumber);
-            return input.Separate(sinfo.length, sinfo.depth, addPadding: isNumber ? true : false, resultAsPath: true);
+            var result = input.Separate(sinfo.length, sinfo.depth, addPadding: isNumber ? true : false, resultAsPath: true);
+            //If extension is missing, check for extension. (only for controlled paths, extension would be missing)
+            if (!string.IsNullOrWhiteSpace(suffix)) {
+                //If we are dealing with number and also inside some kind of control mode, add suffix.
+                result += $@"{suffix}"; //Never get _ as suffix.
+            }
+
+            //Add extension if exists.
+            if (!string.IsNullOrWhiteSpace(extension)) {
+                result += $@"{extension}";
+            }
+            return result;
         }
 
         public static string GenerateCuid(this IOSSRead input, OSSComponent type) {

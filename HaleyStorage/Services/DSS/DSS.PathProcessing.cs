@@ -2,17 +2,18 @@
 using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
+using Microsoft.Identity.Client;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 namespace Haley.Services {
     public partial class DiskStorageService : IDiskStorageService {
         ConcurrentDictionary<string, string> _pathCache = new ConcurrentDictionary<string, string>(); //Let us store the paths of all places.
-        public (string name, string path) GenerateBasePath(IOSSControlled input, OSSComponent basePath) {
+        public (string name, string path) GenerateBasePath(IOSSControlled input, OSSComponent component) {
             string suffix = string.Empty;
             int length = 2;
             int depth = 0;
-            switch (basePath) {
+            switch (component) {
                 case OSSComponent.Client: //We might have very limited number of clients.
                 suffix = Config.SuffixClient;
                 length = 0; depth = 0;
@@ -123,7 +124,70 @@ namespace Haley.Services {
             if (isNumber) return (Config.SplitLengthNumber, Config.DepthNumber);
             return (Config.SplitLengthHash, Config.DepthHash);
         }
+
+        async Task<bool> GetPathFromIndexer(IOSSReadFile input, bool forupload, string workspaceCuid) {
+            if (!string.IsNullOrWhiteSpace(input.File?.Cuid) || input.File?.Id > 0) {
+                //So, the workspace is partially or fully managed.
+                var existing = input.File.Id > 0 ?
+                await Indexer.GetDocVersionInfo(input.Module.Cuid, input.File.Id) :
+                await Indexer.GetDocVersionInfo(input.Module.Cuid, input.File.Cuid);
+                if (existing != null && existing.Status && existing.Result is Dictionary<string, object> dic) {
+                    //We retrieved the information from DB. Just fetch the path.
+                    if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
+                        input.File.Path = dic["path"].ToString();
+                        if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
+                        input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
+                        return true; //No need to proceed further.
+                    }
+                }
+            } else if (!string.IsNullOrWhiteSpace(input.File?.Name) || !string.IsNullOrWhiteSpace(input.TargetName)) {
+                //We try to search by the target name. For a target name, we also need the parent directory information as well.
+                var searchName = input.File?.Name ?? input.TargetName;
+                var dirName = input.Folder?.Name ?? OSSConstants.DEFAULT_NAME;
+                var dirParent = input.Folder?.Parent?.Id ?? 0;
+                var existing = await Indexer.GetDocVersionInfo(input.Module.Cuid, workspaceCuid, searchName, dirName, dirParent);
+                if (existing != null && existing.Status && existing.Result is Dictionary<string, object> dic) {
+                    //We retrieved the information from DB. Just fetch the path.
+                    if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
+                        if (input.File == null) input.SetFile(new OSSFileRoute(input.TargetName, string.Empty) { Cuid = dic["uid"]?.ToString() });
+                        if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid = dic["uid"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = searchName;
+                        input.File.Path = dic["path"].ToString();
+                        if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
+                        input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
+                        return true; //No need to proceed further.
+                    }
+                } else {
+                    //We were not able to find the file.. Remember, we are only trying to see if the file exists in the indexer or not. We are not even worrying about searching the folders. Because, we assume everything is managed in the indexer.
+                    //to-do : Fix later, find ways to handle differently.
+                    if (!forupload) throw new ArgumentException("File not found in the Indexer");
+                }
+            }
+            return false;
+        }
+        bool PopulateFromSavedPath(IOSSReadFile input, bool forupload, OSSWorkspace wInfo) {
+            if (forupload || string.IsNullOrWhiteSpace(input?.File?.SaveAsName)) return false;
+            //If the save as name is provided, then we need to check if workspace mode and generate the path accordingly.
+            if (wInfo.ContentControl == OSSControlMode.None) input.File.Path = input.File.SaveAsName; //Use the save as name as the file path as well.
+            var sname = Path.GetFileNameWithoutExtension(input.File.SaveAsName);
+            var extension = Path.GetExtension(input.File.SaveAsName);
+            string workingName = sname;
+            if (wInfo.ContentControl == OSSControlMode.Number && !sname.IsNumber()) {
+                throw new ArgumentException("Provided Saveas Name is expected to be in a numberic format");
+            } else if(wInfo.ContentControl == OSSControlMode.Guid) {
+                Guid fileGuid;
+                if (sname.IsCompactGuid(out fileGuid) || sname.IsValidGuid(out fileGuid)) {
+                    workingName = fileGuid.ToString("N");
+                } else {
+                    throw new ArgumentException("Provided Saveas Name should be a valid GUID");
+                }
+            }
+            input.File.Path =  OSSUtils.PreparePath(sname, SplitProvider, wInfo.ContentControl, Config.SuffixFile, extension);
+            return true;
+        }
+
         public async Task ProcessFileRoute(IOSSReadFile input) {
+
             //If the input is OSSWrite, then we are tyring to upload or else, we are merely trying to check.
             if (input == null) return;
             if (!string.IsNullOrWhiteSpace(input.TargetPath)) return; // End goal is to have this path defined.
@@ -138,43 +202,10 @@ namespace Haley.Services {
                 throw new Exception($@"Unable to find the workspace information for the given input. Workspace name : {input.Workspace.Name} - Cuid : {workspaceCuid}.");
             }
             
-            //If the workspace is managed, then we have the possibility to get the path from the database.
+            //If the workspace is managed, then we have the possibility to get the path from the database or from generation as well.
             if ((!forupload || ! string.IsNullOrWhiteSpace(input.File?.Cuid)) && (wInfo?.ContentControl != OSSControlMode.None || input.File != null)) {
-
-                //REVISION : string.IsNullOrWhiteSpace(input.File?.Cuid) THIS INDICATES WE ARE TRYING TO SEND A FILE FOR REVISION
-                if (!string.IsNullOrWhiteSpace(input.File?.Cuid) || input.File?.Id > 0) {
-                    //So, the workspace is partially or fully managed.
-                    var existing = input.File.Id > 0 ?
-                        await Indexer.GetDocVersionInfo(input.Module.Cuid, input.File.Id) :
-                        await Indexer.GetDocVersionInfo(input.Module.Cuid, input.File.Cuid);
-                    if (existing != null && existing.Status && existing.Result is Dictionary<string, object> dic) {
-                        //We retrieved the information from DB. Just fetch the path.
-                        if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
-                            input.File.Path = dic["path"].ToString();
-                            if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
-                            input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
-                            return; //No need to proceed further.
-                        }
-                    }
-                } else if (!string.IsNullOrWhiteSpace(input.File?.Name) || !string.IsNullOrWhiteSpace(input.TargetName)) {
-                    //We try to search by the target name. For a target name, we also need the parent directory information as well.
-                    var searchName = input.File?.Name ?? input.TargetName;
-                    var dirName = input.Folder?.Name ?? OSSConstants.DEFAULT_NAME;
-                    var dirParent = input.Folder?.Parent?.Id ?? 0;
-                    var existing = await Indexer.GetDocVersionInfo(input.Module.Cuid, workspaceCuid, searchName, dirName, dirParent);
-                    if (existing != null && existing.Status && existing.Result is Dictionary<string, object> dic) {
-                        //We retrieved the information from DB. Just fetch the path.
-                        if (dic.ContainsKey("path") && dic["path"] != null && !string.IsNullOrWhiteSpace(dic["path"].ToString())) {
-                            if (input.File == null) input.SetFile(new OSSFileRoute(input.TargetName,string.Empty) {Cuid = dic["uid"]?.ToString() });
-                            if (string.IsNullOrWhiteSpace(input.File.Cuid)) input.File.Cuid =   dic["uid"]?.ToString();
-                            if (string.IsNullOrWhiteSpace(input.File.Name)) input.File.Name = searchName;
-                            input.File.Path = dic["path"].ToString();
-                            if (long.TryParse(dic["size"].ToString(), out var size)) input.File.Size = size;
-                            input.File.SaveAsName = dic["dname"]?.ToString() ?? string.Empty;
-                            return; //No need to proceed further.
-                        }
-                    }
-                }
+                if (PopulateFromSavedPath(input, forupload, wInfo)) return;
+                if (await GetPathFromIndexer(input, forupload,workspaceCuid)) return; //Path is retrieved.
             }
 
             string targetFileName = string.Empty;
