@@ -116,8 +116,8 @@ namespace Haley.Services {
                 AddBasePath<OSSWorkspace>(request, paths);
                 if (paths.Count > 0) result = Path.Combine(paths.ToArray());
             }
-            
-            if (!Directory.Exists(result)) throw new DirectoryNotFoundException("The base path doesn't exists.. Unable to build the base path from given input.");
+            Console.WriteLine($"Base Path : {result}");
+            if (!Directory.Exists(result)) throw new DirectoryNotFoundException($@"The base path  {result} doesn't exists.. Unable to build the base path from given input.");
             return result;
         }
         public (int length, int depth) SplitProvider(bool isNumber) {
