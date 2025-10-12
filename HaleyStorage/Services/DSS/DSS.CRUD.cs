@@ -77,7 +77,7 @@ namespace Haley.Services {
                                 //Copy success
                                 fsOperation = await input.FileStream?.TryReplaceFileAsync(input.TargetPath, input.BufferSize);
                             }
-                        } catch (Exception) {
+                        } catch (Exception ) {
                             fsOperation = await DirectoryUtils.TryDeleteFile(version_path);
                         }
                     }
@@ -89,7 +89,7 @@ namespace Haley.Services {
                 result.Status = fsOperation;
                 if (input.File != null) result.SetResult(input.File);
             } catch (Exception ex) {
-                result.Message = ex.Message;
+                result.Message = ex.StackTrace;
                 result.Status = false;
             } finally {
                 IFeedback upInfo = null;
@@ -246,7 +246,7 @@ namespace Haley.Services {
                 result.Message = "Created";
             } catch (Exception ex) {
                 result.Status = false;
-                result.Message = ex.Message;
+                result.Message = ex.StackTrace;
             }
             return result;
         }

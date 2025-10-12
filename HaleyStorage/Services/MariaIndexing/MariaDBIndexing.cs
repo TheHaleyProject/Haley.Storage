@@ -68,8 +68,8 @@ namespace Haley.Utils {
                 result.SetStatus(true).SetMessage(commit ? "Commited Successfully" : "Rolled back successfully");
                 return result;
             } catch (Exception ex) {
-                _logger?.LogError(ex.Message);
-                return result.SetStatus(false).SetMessage(ex.Message);
+                _logger?.LogError(ex.StackTrace);
+                return result.SetStatus(false).SetMessage(ex.StackTrace);
             } finally {
                 foreach (var key in toremove) {
                     if (_handlers.ContainsKey(key)) _handlers.Remove(key, out _);

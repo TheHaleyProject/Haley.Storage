@@ -52,8 +52,8 @@ namespace Haley.Utils {
                 if (data == null || !(data is Dictionary<string, object> dic) || dic.Count < 1) return result.SetMessage($@"Unable to fetch the document version info for the given inputs. Document Id : {docId} ; FileName :  {file_name} ; WSID : {wsId} ; DirName : {dir_name}");
                 return result.SetStatus(true).SetMessage("Document version info obtained").SetResult(dic);
             } catch (Exception ex) {
-                _logger?.LogError(ex.Message);
-                return result.SetMessage(ex.Message);
+                _logger?.LogError(ex.StackTrace);
+                return result.SetMessage(ex.StackTrace);
             }
 
         }
@@ -67,8 +67,8 @@ namespace Haley.Utils {
                 }
                 return new Feedback() { Message = "Unable to fetch the information for the given inputs." };
             } catch (Exception ex) {
-                _logger?.LogError(ex.Message);
-                return new Feedback().SetMessage(ex.Message);
+                _logger?.LogError(ex.StackTrace);
+                return new Feedback().SetMessage(ex.StackTrace);
             }
         }
 
@@ -84,8 +84,8 @@ namespace Haley.Utils {
                 if (data == null || !(data is Dictionary<string, object> dic) || dic.Count < 1) return result.SetMessage($@"Unable to fetch the document version info with either cuid {cuid} or id {id}");
                 return result.SetStatus(true).SetMessage("Document version info obtained").SetResult(dic);
             } catch (Exception ex) {
-                _logger?.LogError(ex.Message);
-                return result.SetMessage(ex.Message);
+                _logger?.LogError(ex.StackTrace);
+                return result.SetMessage(ex.StackTrace);
             }
         }
     }

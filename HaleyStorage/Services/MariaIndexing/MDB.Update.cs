@@ -44,7 +44,7 @@ namespace Haley.Utils {
                 if (updatedInfo == null || !(updatedInfo is Dictionary<string, object> dic) || dic.Count < 1) return result.SetMessage("Unable to confirm if the document version info is properly updated or not.");
                 return result.SetStatus(true).SetMessage("Updated document info").SetResult(dic.ToJson());
             } catch (Exception ex) {
-                return result.SetMessage(ex.Message);
+                return result.SetMessage(ex.StackTrace);
             }
         }
     }

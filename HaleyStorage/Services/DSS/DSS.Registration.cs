@@ -177,7 +177,7 @@ namespace Haley.Services {
                 }
                 return result.SetStatus(true).SetMessage("Successfully registered.");
             } catch (Exception ex) {
-                return new Feedback().SetMessage(ex.ToString());
+                return new Feedback().SetMessage(ex.StackTrace);
             }
         }
     }

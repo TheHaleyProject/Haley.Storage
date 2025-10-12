@@ -217,7 +217,7 @@ namespace Haley.Utils {
 
                 return result;
             } catch (Exception ex) {
-                _logger?.LogError(ex.Message);
+                _logger?.LogError(ex.StackTrace);
                 var dbid = request.Module.Cuid;
                 var handlerKey = GetHandlerKey(request.CallID, dbid);
                 if (!string.IsNullOrWhiteSpace(handlerKey) && _handlers.ContainsKey(handlerKey)) {
