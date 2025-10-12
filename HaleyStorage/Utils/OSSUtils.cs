@@ -19,6 +19,7 @@ using System.Xml.Schema;
 namespace Haley.Utils
 {
     public static class OSSUtils {
+ 
         static (int length,int depth) defaultSplitProvider(bool isInputNumber) {
             if (!isInputNumber) return (1, 8); //Split by 1 and go upto 8 depth for non numbers.
             return (2, 0); //For number go full round
@@ -33,14 +34,14 @@ namespace Haley.Utils
             return input;
         }
 
-        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<IOSSControlled,(long id, Guid guid)> uidManager = null,bool throwExceptions = false) {
+        public static (string name, string path) GenerateFileSystemSavePath(this IOSSControlled nObj,OSSParseMode? parse_overwrite = null, Func<bool,(int length,int depth)> splitProvider = null, string suffix = null, Func<IOSSControlled,(long id, Guid guid)> uidManager = null,bool throwExceptions = false, bool caseSensitive = false) {
             if (nObj == null || !nObj.TryValidate(out _)) return (string.Empty, string.Empty);
             //If We are dealing with virutal item. No need to think a lot, as there is no path.
             if (nObj.IsVirtual) return (nObj.Name, "");
             IOSSUID uidInfo = null;
 
             if (nObj.ControlMode == OSSControlMode.None) {
-                nObj.SaveAsName = nObj.Name; //Completely UnManaged.
+                nObj.SaveAsName = !caseSensitive? nObj.Name : nObj.DisplayName; //Completely UnManaged.
             } else {
                 //Partially or fully managed
                 if (nObj.DisplayName.TryPopulateControlledID(out uidInfo,nObj.ControlMode, parse_overwrite ?? nObj.ParseMode, uidManager,nObj, throwExceptions)) {

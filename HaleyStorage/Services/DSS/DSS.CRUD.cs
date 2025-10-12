@@ -125,7 +125,9 @@ namespace Haley.Services {
                         result.Message = "The directory doesn't exists.";
                         return Task.FromResult(result);
                     }
-                    var matchingFiles = dinfo?.GetFiles()?.Where(p => Path.GetFileNameWithoutExtension(p.Name) == findName).ToList();
+                    var comparison = _caseSensitivePairs.Any(p => p.client.Equals(input.Client.Name.ToDBName())) ? StringComparison.InvariantCulture : StringComparison.OrdinalIgnoreCase;
+
+                    var matchingFiles = dinfo?.GetFiles()?.Where(p => Path.GetFileNameWithoutExtension(p.Name).Equals(findName, comparison)).ToList();
                     if (matchingFiles.Count() == 1) {
                         path = matchingFiles.FirstOrDefault().FullName;
                     } else if (matchingFiles.Count() > 1) {
@@ -265,11 +267,18 @@ namespace Haley.Services {
             }
             //How do we verfiy, if this the final target that we wish to delete?
             //We should not by mistake end up deleting a wrong directory.
-            var expectedToDelete = input.Folder.Path?.Trim().ToLower();
+            var expectedToDelete = input.Folder.Path?.Trim();
+            if (!_caseSensitivePairs.Any(p=> p.client.Equals(input.Client.Name.ToDBName(), StringComparison.InvariantCultureIgnoreCase))) {
+                expectedToDelete = expectedToDelete?.ToLower();
+                if (expectedToDelete.Equals(pathInfo.basePath.ToLower())) {
+                    feedback.Message = "Path is not valid for deleting.";
+                    return feedback;
+                }
+            };
 
             if (string.IsNullOrWhiteSpace(expectedToDelete) ||
                 (expectedToDelete == "\\" || expectedToDelete == "/") ||
-                expectedToDelete.Equals(pathInfo.basePath.ToLower()) ||
+                expectedToDelete.Equals(pathInfo.basePath) ||
                  pathInfo.targetPath.Equals(pathInfo.basePath,StringComparison.InvariantCultureIgnoreCase)) {
                 feedback.Message = "Path is not valid for deleting.";
                 return feedback;

@@ -13,15 +13,20 @@ namespace Haley.Services {
             string suffix = string.Empty;
             int length = 2;
             int depth = 0;
+            bool case_sensitive = false;
+
             switch (component) {
                 case OSSComponent.Client: //We might have very limited number of clients.
                 suffix = Config.SuffixClient;
                 length = 0; depth = 0;
+                case_sensitive = _caseSensitivePairs.Any(p => input.Name.ToDBName().Equals(p.client, StringComparison.OrdinalIgnoreCase));
                 break;
                 case OSSComponent.Module:
                 suffix = Config.SuffixModule;
                 length = 0; depth = 0;
+                case_sensitive = _caseSensitivePairs.Any(p => input.Name.ToDBName().Equals(p.module, StringComparison.OrdinalIgnoreCase));
                 break;
+
                 case OSSComponent.WorkSpace:
                 //Only if the parase mode is generate, it is managed.
                 string suffixAddon =string.Empty;
@@ -41,7 +46,7 @@ namespace Haley.Services {
                 suffix = Config.SuffixFile;
                 throw new NotImplementedException("No method implemented for handling BasePath generation for File Component type.");
             }
-            return OSSUtils.GenerateFileSystemSavePath(input, OSSParseMode.Generate, (n) => { return (length, depth); }, suffix: suffix, throwExceptions: false);
+            return OSSUtils.GenerateFileSystemSavePath(input, OSSParseMode.Generate, (n) => { return (length, depth); }, suffix: suffix, throwExceptions: false,caseSensitive:case_sensitive);
         }
         public string GetStorageRoot() {
             return BasePath;

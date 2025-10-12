@@ -23,5 +23,7 @@ namespace Haley.Models {
         public OSSParseMode Parse { get; set; }
         [JsonPropertyName("virtual")]
         public bool IsVirtual { get; set; }
+        [JsonPropertyName("case-sensitive")]
+        public bool CaseSensitive { get; set; } 
     }
 }

@@ -2,6 +2,8 @@
 using Haley.Models;
 using Haley.Utils;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Runtime.InteropServices;
 
 namespace Haley.Services {
     public partial class DiskStorageService : IDiskStorageService {
@@ -27,7 +29,7 @@ namespace Haley.Services {
             if (string.IsNullOrWhiteSpace(BasePath)) {
                 BasePath = AssemblyUtils.GetBaseDirectory(parentFolder: "DataStore");
             }
-            BasePath = BasePath?.ToLower();
+            //BasePath = BasePath?.ToLower(); //In Linux, we might end up having case sensitivity issue.
             SetIndexer(indexer);
             _logger = logger;
 
@@ -38,6 +40,28 @@ namespace Haley.Services {
             var defObj = new OSSControlled(OSSConstants.DEFAULT_NAME);
             await RegisterClient(defObj); //Registers defaul client, with default module and default workspace
             _isInitialized = true;
+        }
+
+        public static IDiskStorageService Create(IAdapterGateway agw, string adapter_key,out (string logpath,string respMode) data) {
+            data = (null, null);
+            var cfgRoot = ResourceUtils.GenerateConfigurationRoot();
+            var dirPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? OSSConstants.CONFIG_DIR_WIN : OSSConstants.CONFIG_DIR_LINUX;
+            var dirSection = cfgRoot[$@"Seed:{OSSConstants.CONFIG_INFO}:{dirPath}"];
+            var responseMode = cfgRoot[$@"Seed:{OSSConstants.CONFIG_INFO}:{OSSConstants.CONFIG_DIR_RESPONSEPATHMODE}"];
+            bool writemode = false;
+            bool.TryParse(ResourceUtils.FetchVariable($@"{OSSConstants.OSS_WRITEMODE}")?.Result?.ToString(), out writemode);
+            var dirInfo = dirSection?.ToDictionarySplit();
+            string logPath = null; // dirSection?["log"]
+            string storagePath = string.Empty;
+            if (dirInfo != null && dirInfo!.TryGetValue("log", out var logObj)) logPath = logObj.ToString();
+            if (dirInfo != null && dirInfo!.TryGetValue("path", out var storageObj)) storagePath = storageObj.ToString();
+
+            var dss = new DiskStorageService(agw, adapter_key, storagePath, writemode);
+            var ossConfig = cfgRoot.GetSection("Seed:OSSConfig")?.Get<DSSConfig>();
+            if (ossConfig != null) dss.SetConfig(ossConfig);
+            dss.RegisterFromSource().Wait();
+            data = (logPath, responseMode);
+            return dss;
         }
 
         public bool ThrowExceptions { get; set; }
@@ -52,6 +76,11 @@ namespace Haley.Services {
         public IDiskStorageService SetIndexer(IDSSIndexing service) {
             Indexer = service;
             Initialize(true).Wait();
+            return this;
+        }
+
+        public IDiskStorageService SetConfig(IDSSConfig config) {
+            Config = config ?? new DSSConfig();
             return this;
         }
     }

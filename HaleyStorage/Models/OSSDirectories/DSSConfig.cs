@@ -3,6 +3,7 @@ using Haley.Enums;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Haley.Models {
     public class DSSConfig : IDSSConfig{
@@ -15,5 +16,7 @@ namespace Haley.Models {
         public int DepthNumber { get; set; } = 0;
         public int SplitLengthHash { get; set; } = 2; //For Hash
         public int DepthHash { get; set; } = 7;
+
+        public DSSConfig() { }
     }
 }

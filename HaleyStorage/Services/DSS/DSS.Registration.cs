@@ -3,12 +3,15 @@ using Haley.Enums;
 using Haley.Models;
 using Haley.Utils;
 using Microsoft.Extensions.Configuration;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Xml;
 
 namespace Haley.Services {
     public partial class DiskStorageService : IDiskStorageService {
+        List<(string client, string module)> _caseSensitivePairs = new List<(string client, string module)>();
         public Task<IFeedback> RegisterClient(string client_name, string password = null) {
-            return RegisterClient(new OSSControlled(client_name));
+            return RegisterClient(new OSSControlled(client_name) { });
         }
         public Task<IFeedback> RegisterModule(string module_name=null, string client_name = null) {
             return RegisterModule(new OSSControlled(module_name), new OSSControlled(client_name));
@@ -136,7 +139,7 @@ namespace Haley.Services {
             try {
                 var result = new Feedback();
                 if (section == null) {
-                    section = ResourceUtils.GenerateConfigurationRoot()?.GetSection(OSSConstants.CONFIG_SOURCE);
+                    section = ResourceUtils.GenerateConfigurationRoot()?.GetSection($@"Seed:{OSSConstants.CONFIG_SOURCE}");
                     if (section == null) return result.SetMessage("Cannot proceed with empty configuration");
                 }
                 var sources = section.AsDictionaryList();
@@ -145,6 +148,9 @@ namespace Haley.Services {
                     .Select(q => ((Dictionary<string, object>)q.First().Value).Map<DSSRegInfo>())
                     .ToList();
                 if (sourceList == null || sourceList.Count < 0) return result.SetMessage("Unable to parse registration info from the given configuration section.");
+
+                //First get all the case sensitive clients.
+                 _caseSensitivePairs = sourceList.Where(p => p.CaseSensitive).Select(p => (p.Client.ToDBName(), p.Module.ToDBName())).Distinct().ToList(); //We refer and make sure, these clients are always respected of their case sensitivity.
 
                 var clients = new List<string>();
                 var modules = new List<string>();

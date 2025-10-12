@@ -41,11 +41,13 @@ namespace Haley.Utils {
                 if (string.IsNullOrWhiteSpace(moduleCuid) || wsId < 1) return result.SetMessage($@"Module CUID & non-zero worspace id are mandatory to fetch document info");
                 if (string.IsNullOrWhiteSpace(file_name)) return result.SetMessage($@"For this approach, file name required for searching.");
                 if (!_agw.ContainsKey(moduleCuid)) return result.SetMessage($@"No adapter found for the key {moduleCuid}");
-                
+
                 var name = Path.GetFileNameWithoutExtension(file_name).ToDBName();
+                //if (!caseSensitive) name = name.ToDBName();
+
                 var extension = Path.GetExtension(file_name)?.ToDBName() ?? OSSConstants.DEFAULT_NAME;
 
-                var docInfo = await _agw.Scalar(new AdapterArgs(moduleCuid) { Query = INSTANCE.DOCUMENT.GET_BY_NAME }, (NAME,name),(EXT, extension),(WSPACE,wsId),(PARENT,dir_parent_id),(DIRNAME,dir_name.ToDBName()));
+                var docInfo = await _agw.Scalar(new AdapterArgs(moduleCuid) { Query = INSTANCE.DOCUMENT.GET_BY_NAME }, (NAME,name.ToDBName()),(EXT, extension),(WSPACE,wsId),(PARENT,dir_parent_id),(DIRNAME,dir_name.ToDBName()));
                 if (docInfo == null || !long.TryParse(docInfo.ToString(),out var docId)) return result.SetMessage($@"Unable to fetch the document for the given inputs. FileName :  {file_name} ; WSID : {wsId} ; DirName : {dir_name}");
 
                 var data = await _agw.Read(new AdapterArgs(moduleCuid) { Query = INSTANCE.DOCVERSION.GET_LATEST_BY_PARENT, Filter = ResultFilter.FirstDictionary }, (PARENT,docId));
