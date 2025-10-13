@@ -75,7 +75,7 @@ namespace Haley.Services {
         }
         public IDiskStorageService SetIndexer(IDSSIndexing service) {
             Indexer = service;
-            Initialize(true).Wait();
+            Initialize(true)?.Wait();
             return this;
         }
 
