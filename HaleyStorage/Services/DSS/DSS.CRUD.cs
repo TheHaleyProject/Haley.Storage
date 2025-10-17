@@ -196,6 +196,11 @@ namespace Haley.Services {
             return new FileInfo(path).Length;
         }
 
+        public async Task<IFeedback<string>> GetParent(IOSSRead input) {
+            var path = ProcessAndBuildStoragePath(input, true).targetPath;
+            return new Feedback<string>() { Status = true, Result = string.Empty };
+        }
+
         public Task<IOSSDirResponse> GetDirectoryInfo(IOSSRead input) {
             IOSSDirResponse result = new OSSDirResponse() { Status = false };
             var path = ProcessAndBuildStoragePath(input, false).targetPath;

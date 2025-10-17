@@ -74,6 +74,24 @@ namespace Haley.Utils {
             }
         }
 
+        public async Task<IFeedback<string>> GetParentName(IOSSRead request) {
+            var fb = new Feedback<string>();
+            try {
+                //if (request == null) return fb.SetMessage("Input request cannot be empty");
+                //if (request.) return fb.SetMessage("Input request cannot be empty");
+                //if (string.IsNullOrWhiteSpace(wsCuid)) return new Feedback() { Message = "Workspace CUID cannot be empty." };
+                //var wsInfo = await _agw.Scalar(new AdapterArgs(_key) { Query = WORKSPACE.EXISTS_BY_CUID }, (CUID, wsCuid));
+                //if (wsInfo != null && long.TryParse(wsInfo.ToString(), out var wsId)) {
+                //    return await GetDocVersionInfo(moduleCuid, wsId, file_name, dir_name, dir_parent_id);
+                //}
+                //return new Feedback() { Message = "Unable to fetch the information for the given inputs." };
+                return fb.SetStatus(true);
+            } catch (Exception ex) {
+                _logger?.LogError(ex.StackTrace);
+                return fb.SetStatus(false).SetMessage(ex.Message);
+            }
+        }
+
         async Task<IFeedback> GetDocVersionInfoInternal(string moduleCuid, long id, string cuid) {
             Feedback result = new Feedback();
             try {
