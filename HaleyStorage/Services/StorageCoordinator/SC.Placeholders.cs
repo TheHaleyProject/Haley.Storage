@@ -2,6 +2,7 @@ using Haley.Abstractions;
 using Haley.Models;
 using Haley.Utils;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -102,6 +103,63 @@ namespace Haley.Services {
 
                 return fb.SetStatus(true).SetResult(new PlaceholderInfo { VersionId   = versionId, VersionCuid = versionCuid, StorageName = storageName, StorageRef  = storageRef, StagingRef  = stagingRef });
 
+            } catch (Exception ex) {
+                return fb.SetMessage(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Resolves a placeholder through the direct version lookup. Normal file details intentionally
+        /// expose only completed content, so they cannot be used during the ticket upload lifecycle.
+        /// </summary>
+        public async Task<IFeedback<VaultFileDetailsResponse>> GetPlaceholderDetails(IVaultFileReadRequest request) {
+            var fb = new Feedback<VaultFileDetailsResponse>();
+            try {
+                if (request == null) return fb.SetMessage("Request cannot be null.");
+                if (Indexer == null) return fb.SetMessage("An indexer is required to resolve a placeholder.");
+                if (!Guid.TryParse(request.File?.Cuid, out var parsedCuid))
+                    return fb.SetMessage("A valid placeholder version CUID is required.");
+
+                PrepareRequestContext(request);
+                var moduleCuid = StorageUtils.GenerateCuid(request, Haley.Enums.VaultObjectType.Module);
+                var normalizedCuid = parsedCuid.ToString("N");
+                var existing = await Indexer.GetDocVersionInfo(moduleCuid, normalizedCuid).ConfigureAwait(false);
+                if (existing?.Status != true || existing.Result is not Dictionary<string, object> row || row.Count < 1)
+                    return fb.SetMessage($"Placeholder {normalizedCuid} was not found.");
+
+                string ReadString(string key) => row.TryGetValue(key, out var value) && value != null && value != DBNull.Value
+                    ? value.ToString() ?? string.Empty
+                    : string.Empty;
+                long ReadLong(string key) => long.TryParse(ReadString(key), out var value) ? value : 0;
+                int ReadInt(string key) => int.TryParse(ReadString(key), out var value) ? value : 0;
+                long? ReadNullableLong(string key) => long.TryParse(ReadString(key), out var value) ? value : null;
+                DateTime? ReadDateTime(string key) => DateTime.TryParse(ReadString(key), out var value) ? value : null;
+
+                var version = new VaultFileVersionInfo {
+                    VersionId = ReadLong("id"),
+                    VersionCuid = normalizedCuid,
+                    VersionNumber = ReadInt("ver"),
+                    ActorId = ReadLong("actor"),
+                    Created = ReadDateTime("created"),
+                    Size = ReadNullableLong("size"),
+                    StorageName = ReadString("saveas_name"),
+                    StorageRef = ReadString("path"),
+                    StagingRef = ReadString("staging_path"),
+                    Flags = ReadInt("flags"),
+                    Hash = ReadString("hash"),
+                    SyncedAt = ReadDateTime("synced_at"),
+                    Metadata = ReadString("metadata")
+                };
+
+                if (version.VersionId < 1 || string.IsNullOrWhiteSpace(version.VersionCuid))
+                    return fb.SetMessage($"Placeholder {normalizedCuid} does not contain valid version identity.");
+
+                return fb.SetStatus(true).SetResult(new VaultFileDetailsResponse {
+                    DocumentCuid = ReadString("ruid"),
+                    DisplayName = ReadString("dname"),
+                    VersionCount = 1,
+                    Versions = new List<VaultFileVersionInfo> { version }
+                });
             } catch (Exception ex) {
                 return fb.SetMessage(ex.Message);
             }

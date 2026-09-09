@@ -86,6 +86,12 @@ namespace Haley.Abstractions {
         Task<IFeedback<PlaceholderInfo>> CreatePlaceholder(IVaultReadRequest request, string fileName, string displayName = null);
 
         /// <summary>
+        /// Resolves an existing placeholder directly by its version CUID. Unlike normal file details,
+        /// this operation includes an incomplete version carrying the Placeholder flag.
+        /// </summary>
+        Task<IFeedback<VaultFileDetailsResponse>> GetPlaceholderDetails(IVaultFileReadRequest request);
+
+        /// <summary>
         /// Marks a placeholder version as complete after the out-of-band copy lands.
         /// <list type="bullet">
         ///   <item>toStaging=false → sets flags = InStorage|Completed (8|64); updates storage_ref.</item>
