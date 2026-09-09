@@ -45,7 +45,12 @@ namespace Haley.Services {
                 // Build a write request so ProcessAndBuildStoragePath enters forupload mode,
                 // which triggers RegisterDocuments and generates the storage name/path.
                 // FileStream is intentionally null — the file does not exist yet.
-                var writeReq = new StorageWriteRequest(request.Scope?.Client?.Name, request.Scope?.Module?.Name, request.Scope?.Workspace?.Name) { OriginalName = fileName, FileStream = null };
+                var writeReq = new StorageWriteRequest(request.Scope?.Client?.Name, request.Scope?.Module?.Name, request.Scope?.Workspace?.Name) {
+                    OriginalName = fileName,
+                    FileStream = null,
+                    Actor = request.Actor
+                };
+                writeReq.Scope.Folder = request.Scope?.Folder;
 
                 writeReq.GenerateCallId();
                 ProcessAndBuildStoragePath(writeReq, true);
