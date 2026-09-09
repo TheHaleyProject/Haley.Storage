@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `chunk_info` (
   `is_completed` bit(1) NOT NULL DEFAULT b'0' COMMENT 'Completion flag. 0=upload in progress (not all parts received or not yet merged). 1=all parts received AND the application has successfully merged them into the final file. Set by MarkChunkCompleted() in MariaDBIndexing.',
   `path` varchar(200) NOT NULL COMMENT 'Full path to the temporary chunk staging directory on the staging storage provider. E.g. "/staging/acme/hr/chunks_abc123/". The application streams individual chunks into files under this directory, then reads them back in order during merge.',
   PRIMARY KEY (`id`),
+  KEY `idx_chunk_info_completion` (`is_completed`,`id`),
   CONSTRAINT `fk_chunk_info_doc_version` FOREIGN KEY (`id`) REFERENCES `doc_version` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `cns_chunk_info` CHECK (`parts` >= 1),
   CONSTRAINT `cns_chunk_info_0` CHECK (`size` >= 1)
